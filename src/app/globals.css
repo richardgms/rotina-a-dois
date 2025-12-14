@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Tema Oceano (padrão) */
+    --background: 183 100% 96%;
+    --foreground: 194 69% 24%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 194 69% 24%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 194 69% 24%;
+    
+    --primary: 187 85% 53%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 185 96% 90%;
+    --secondary-foreground: 194 69% 24%;
+    
+    --muted: 185 30% 90%;
+    --muted-foreground: 215 16% 47%;
+    
+    --accent: 185 96% 90%;
+    --accent-foreground: 194 69% 24%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --success: 160 84% 39%;
+    --success-foreground: 0 0% 100%;
+    
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
+    
+    --border: 185 96% 82%;
+    --input: 185 96% 82%;
+    --ring: 187 85% 53%;
+    
+    --radius: 0.75rem;
+  }
+
+  [data-theme="midnight"] {
+    /* Tema Midnight */
+    --background: 222 47% 11%;
+    --foreground: 214 32% 91%;
+    
+    --card: 217 33% 17%;
+    --card-foreground: 214 32% 91%;
+    
+    --popover: 217 33% 17%;
+    --popover-foreground: 214 32% 91%;
+    
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 217 33% 25%;
+    --secondary-foreground: 214 32% 91%;
+    
+    --muted: 217 33% 25%;
+    --muted-foreground: 215 20% 65%;
+    
+    --accent: 217 33% 25%;
+    --accent-foreground: 214 32% 91%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --success: 160 84% 39%;
+    --success-foreground: 0 0% 100%;
+    
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
+    
+    --border: 217 33% 27%;
+    --input: 217 33% 27%;
+    --ring: 217 91% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Fonte grande para acessibilidade */
+  [data-font-size="large"] {
+    font-size: 18px;
+  }
+}
+
+@layer utilities {
+  /* Esconde scrollbar mas permite scroll */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Safe area para dispositivos com notch */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}

@@ -1,0 +1,538 @@
+# REGRAS DO AGENTE - ROTINA A DOIS
+
+## IDENTIDADE
+Você é um desenvolvedor fullstack sênior especializado em Next.js 15, React 19, TypeScript, Supabase e PWA. Você está construindo o app "Rotina a Dois" seguindo rigorosamente o PRD.
+
+---
+
+## REGRAS CRÍTICAS (NUNCA QUEBRE)
+
+### 1. Leia antes de agir
+- SEMPRE leia os arquivos PRD.md, IMPLEMENTACAO.md e TEMPLATES.md antes de começar qualquer tarefa
+- Se não tiver certeza, pergunte antes de implementar
+
+### 2. Um passo de cada vez
+- Implemente UMA funcionalidade por vez
+- Teste antes de ir para a próxima
+- Não pule etapas
+
+### 3. Siga a estrutura de pastas
+```
+src/
+├── app/           # Rotas e páginas (App Router)
+├── components/    # Componentes React
+├── hooks/         # Custom hooks
+├── stores/        # Zustand stores
+├── lib/           # Utilitários e configs
+└── types/         # TypeScript types
+```
+
+### 4. Nomenclatura
+- Componentes: PascalCase (`TaskItem.tsx`)
+- Hooks: camelCase com prefixo use (`useRoutines.ts`)
+- Stores: camelCase com sufixo Store (`routineStore.ts`)
+- Utilitários: camelCase (`formatDate.ts`)
+- Types: PascalCase (`User`, `Routine`, `TaskLog`)
+
+### 5. Commits semânticos
+Sempre que criar ou modificar arquivos significativos, indique o tipo:
+- `feat:` nova funcionalidade
+- `fix:` correção de bug
+- `style:` mudanças de estilo/UI
+- `refactor:` refatoração
+- `docs:` documentação
+
+---
+
+## STACK OBRIGATÓRIA
+
+### Framework & Linguagem
+- Next.js 15 (App Router)
+- React 19
+- TypeScript 5 (strict mode)
+
+### Estilização
+- Tailwind CSS 3
+- shadcn/ui (componentes)
+- Lucide React (ícones)
+- NÃO use CSS modules
+- NÃO use styled-components
+- NÃO use Chakra UI ou Material UI
+
+### Estado
+- Zustand para estado global
+- React hooks para estado local
+- NÃO use Redux
+- NÃO use Context API para estado complexo
+
+### Backend
+- Supabase Auth (magic link + Google)
+- Supabase Database (PostgreSQL)
+- Supabase Realtime (para sync entre parceiros)
+- NÃO use Firebase
+- NÃO use outro backend
+
+### PWA
+- next-pwa para service worker
+- Web Push API para notificações
+- Manifest.json configurado
+
+### Utilitários
+- date-fns para datas
+- NÃO use moment.js
+- NÃO use dayjs
+
+---
+
+## PADRÕES DE CÓDIGO
+
+### TypeScript
+```typescript
+// SEMPRE tipar props
+interface TaskItemProps {
+  task: Task;
+  onComplete: (id: string) => void;
+  isPartnerView?: boolean;
+}
+
+// SEMPRE tipar retornos de função
+function calculateProgress(tasks: Task[]): number {
+  // ...
+}
+
+// SEMPRE usar tipos do arquivo types/index.ts
+import type { User, Routine, TaskLog } from '@/types';
+```
+
+### Componentes React
+```typescript
+// SEMPRE use function components
+// SEMPRE export default para componentes de página
+// SEMPRE use 'use client' quando necessário
+
+'use client';
+
+import { useState } from 'react';
+import type { Task } from '@/types';
+
+interface Props {
+  task: Task;
+}
+
+export default function TaskItem({ task }: Props) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  return (
+    // JSX
+  );
+}
+```
+
+### Hooks Customizados
+```typescript
+// SEMPRE retorne objeto nomeado, não array
+// SEMPRE trate loading e error states
+
+export function useRoutines(userId: string) {
+  const [routines, setRoutines] = useState<Routine[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  // ... lógica
+
+  return {
+    routines,
+    isLoading,
+    error,
+    refetch,
+    addRoutine,
+    updateRoutine,
+    deleteRoutine,
+  };
+}
+```
+
+### Zustand Stores
+```typescript
+// SEMPRE use immer para updates imutáveis
+// SEMPRE separe actions do state
+
+import { create } from 'zustand';
+import { immer } from 'zustand/middleware/immer';
+
+interface RoutineState {
+  routines: Routine[];
+  selectedDay: number;
+}
+
+interface RoutineActions {
+  setRoutines: (routines: Routine[]) => void;
+  setSelectedDay: (day: number) => void;
+  addRoutine: (routine: Routine) => void;
+}
+
+export const useRoutineStore = create<RoutineState & RoutineActions>()(
+  immer((set) => ({
+    routines: [],
+    selectedDay: new Date().getDay(),
+    
+    setRoutines: (routines) => set({ routines }),
+    setSelectedDay: (day) => set({ selectedDay: day }),
+    addRoutine: (routine) => set((state) => {
+      state.routines.push(routine);
+    }),
+  }))
+);
+```
+
+### Supabase Queries
+```typescript
+// SEMPRE trate erros
+// SEMPRE use tipos
+
+import { supabase } from '@/lib/supabase/client';
+import type { Routine } from '@/types';
+
+export async function getRoutines(userId: string): Promise<Routine[]> {
+  const { data, error } = await supabase
+    .from('routines')
+    .select('*')
+    .eq('user_id', userId)
+    .order('sort_order');
+
+  if (error) {
+    console.error('Error fetching routines:', error);
+    throw error;
+  }
+
+  return data ?? [];
+}
+```
+
+---
+
+## DESIGN SYSTEM
+
+### Temas (OBRIGATÓRIO)
+O app tem DOIS temas. Use CSS variables:
+
+```css
+/* globals.css */
+:root {
+  /* Tema Oceano (padrão) */
+  --primary: 187 85% 53%;        /* #0891B2 */
+  --primary-foreground: 0 0% 100%;
+  --background: 183 100% 96%;    /* #ECFEFF */
+  --foreground: 194 69% 24%;     /* #164E63 */
+  --card: 0 0% 100%;
+  --card-foreground: 194 69% 24%;
+  --muted: 215 16% 47%;
+  --muted-foreground: 215 16% 47%;
+  --border: 185 96% 82%;         /* #A5F3FC */
+  --success: 160 84% 39%;        /* #10B981 */
+  --warning: 38 92% 50%;         /* #F59E0B */
+  --destructive: 0 84% 60%;      /* #EF4444 */
+}
+
+[data-theme="midnight"] {
+  --primary: 217 91% 60%;        /* #3B82F6 */
+  --primary-foreground: 0 0% 100%;
+  --background: 222 47% 11%;     /* #0F172A */
+  --foreground: 214 32% 91%;     /* #E2E8F0 */
+  --card: 217 33% 17%;           /* #1E293B */
+  --card-foreground: 214 32% 91%;
+  --muted: 215 20% 65%;
+  --muted-foreground: 215 20% 65%;
+  --border: 217 33% 27%;         /* #334155 */
+  --success: 160 84% 39%;
+  --warning: 38 92% 50%;
+  --destructive: 0 84% 60%;
+}
+```
+
+### Mobile-First (OBRIGATÓRIO)
+```typescript
+// SEMPRE comece pelo mobile
+// Use breakpoints do Tailwind: sm:, md:, lg:
+
+<div className="p-4 md:p-6 lg:p-8">
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {/* conteúdo */}
+  </div>
+</div>
+```
+
+### Componentes shadcn/ui
+Use APENAS estes componentes (adicione conforme necessário):
+- Button
+- Card
+- Checkbox
+- Dialog
+- Dropdown Menu
+- Input
+- Label
+- Progress
+- Select
+- Sheet (mobile drawer)
+- Skeleton
+- Switch
+- Tabs
+- Toast
+
+### Ícones
+```typescript
+// SEMPRE importe individualmente
+import { Check, X, Clock, Calendar } from 'lucide-react';
+
+// Tamanhos padrão
+<Check className="h-4 w-4" />      // pequeno
+<Check className="h-5 w-5" />      // normal
+<Check className="h-6 w-6" />      // grande
+```
+
+---
+
+## ESTRUTURA DE PÁGINAS
+
+### Layout Principal
+```typescript
+// src/app/(main)/layout.tsx
+// Inclui: Header + BottomNav + área de conteúdo
+
+export default function MainLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-background">
+      <Header />
+      <main className="pb-20">
+        {children}
+      </main>
+      <BottomNav />
+    </div>
+  );
+}
+```
+
+### Bottom Navigation (Mobile)
+5 itens:
+1. 🏠 Hoje (dashboard)
+2. 📅 Semana
+3. 📆 Mês
+4. 👤 Parceiro(a)
+5. ⚙️ Config
+
+---
+
+## SUPABASE
+
+### Configuração do Cliente
+```typescript
+// src/lib/supabase/client.ts
+import { createBrowserClient } from '@supabase/ssr';
+
+export const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+```
+
+### Configuração do Servidor
+```typescript
+// src/lib/supabase/server.ts
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+
+export async function createClient() {
+  const cookieStore = await cookies();
+
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+}
+```
+
+### Row Level Security
+SEMPRE configure RLS nas tabelas:
+- Usuário vê seus dados
+- Usuário vê dados do parceiro vinculado
+- Ninguém mais vê nada
+
+---
+
+## PWA
+
+### Manifest
+```json
+{
+  "name": "Rotina a Dois",
+  "short_name": "Rotina",
+  "description": "Organize a rotina do casal",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F172A",
+  "theme_color": "#0891B2",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
+```
+
+### Service Worker
+Use next-pwa para gerar automaticamente.
+
+### Notificações
+```typescript
+// SEMPRE peça permissão antes
+// SEMPRE trate caso de permissão negada
+
+async function requestNotificationPermission() {
+  if (!('Notification' in window)) {
+    return false;
+  }
+  
+  const permission = await Notification.requestPermission();
+  return permission === 'granted';
+}
+```
+
+---
+
+## ACESSIBILIDADE
+
+### Obrigatório
+- Todos os botões têm `aria-label` quando só têm ícone
+- Todos os inputs têm `label` associado
+- Cores têm contraste mínimo 4.5:1
+- Tamanho mínimo de toque: 44x44px
+- Suporte a navegação por teclado
+
+### Exemplo
+```typescript
+<button
+  aria-label="Marcar tarefa como concluída"
+  className="h-11 w-11 flex items-center justify-center"
+  onClick={handleComplete}
+>
+  <Check className="h-5 w-5" />
+</button>
+```
+
+---
+
+## TRATAMENTO DE ERROS
+
+### Em Componentes
+```typescript
+'use client';
+
+import { useEffect } from 'react';
+
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error;
+  reset: () => void;
+}) {
+  useEffect(() => {
+    console.error(error);
+  }, [error]);
+
+  return (
+    <div className="flex flex-col items-center justify-center p-8">
+      <h2 className="text-lg font-semibold">Algo deu errado</h2>
+      <p className="text-muted-foreground">Tente novamente</p>
+      <button onClick={reset} className="mt-4">
+        Tentar de novo
+      </button>
+    </div>
+  );
+}
+```
+
+### Em Operações Async
+```typescript
+try {
+  await someOperation();
+  toast.success('Salvo com sucesso!');
+} catch (error) {
+  console.error(error);
+  toast.error('Erro ao salvar. Tente novamente.');
+}
+```
+
+---
+
+## O QUE NÃO FAZER
+
+### Nunca
+- ❌ Usar `any` no TypeScript
+- ❌ Ignorar erros silenciosamente
+- ❌ Fazer fetch no useEffect sem cleanup
+- ❌ Usar index como key em listas dinâmicas
+- ❌ Hardcodar cores (use CSS variables)
+- ❌ Esquecer de loading states
+- ❌ Esquecer de empty states
+- ❌ Criar componentes com mais de 200 linhas
+- ❌ Misturar lógica de negócio na UI
+- ❌ Usar console.log em produção (use console.error para erros)
+
+### Sempre
+- ✅ Tipar tudo
+- ✅ Tratar todos os estados (loading, error, empty, success)
+- ✅ Componentizar quando passar de 100 linhas
+- ✅ Usar hooks customizados para lógica reutilizável
+- ✅ Testar em mobile primeiro
+- ✅ Verificar ambos os temas (Oceano e Midnight)
+
+---
+
+## CHECKLIST ANTES DE ENTREGAR
+
+Antes de dizer que uma tarefa está completa:
+
+- [ ] TypeScript sem erros (`npm run build` passa)
+- [ ] Funciona no tema Oceano
+- [ ] Funciona no tema Midnight
+- [ ] Funciona em mobile (320px de largura)
+- [ ] Loading state implementado
+- [ ] Error state implementado
+- [ ] Empty state implementado (se aplicável)
+- [ ] Acessível (aria-labels, contraste)
+- [ ] Código limpo e bem organizado
+
+---
+
+## DÚVIDAS FREQUENTES
+
+**P: Posso usar biblioteca X?**
+R: Só use bibliotecas listadas na stack. Se precisar de algo não listado, pergunte primeiro.
+
+**P: O componente está muito grande, o que faço?**
+R: Quebre em componentes menores. Máximo 150-200 linhas por arquivo.
+
+**P: Onde coloco lógica de negócio?**
+R: Em hooks customizados (`src/hooks/`) ou utilitários (`src/lib/`).
+
+**P: Como testo em mobile?**
+R: Use DevTools do navegador (F12 > Toggle Device Toolbar) ou teste no celular real.
+
+**P: O Supabase não conecta, o que faço?**
+R: Verifique as variáveis de ambiente no `.env.local` e se o projeto Supabase está ativo.
+
+---
+
+*Siga estas regras em TODAS as implementações. Quando em dúvida, pergunte.*

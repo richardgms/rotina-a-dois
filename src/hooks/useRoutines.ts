@@ -22,7 +22,10 @@ export function useRoutines() {
 
     // Buscar rotinas do usuário
     const fetchRoutines = useCallback(async () => {
-        if (!user) return;
+        if (!user) {
+            setLoading(false);
+            return;
+        }
 
         setLoading(true);
         try {
@@ -105,7 +108,7 @@ export function useRoutines() {
             .select();
 
         if (error) throw error;
-        data?.forEach((r) => addRoutine(r as Routine));
+        data?.forEach((r: any) => addRoutine(r as Routine));
     };
 
     // Reordenar rotinas

@@ -1,3 +1,139 @@
+'use client';
+
+import { useState } from 'react';
+import { LogOut, Moon, Sun, User, Bell, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/hooks/useTheme';
+import { useUIStore } from '@/stores/uiStore';
+import { getSupabaseClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
+
 export default function SettingsPage() {
-    return <div>Settings TODO</div>;
+    const { user, partner, signOut } = useAuth();
+    const { theme, setTheme } = useTheme();
+    const { openConfirmDialog } = useUIStore();
+    const [name, setName] = useState(user?.name || '');
+    const supabase = getSupabaseClient();
+
+    const handleSaveName = async () => {
+        if (!user || !name.trim()) return;
+
+        try {
+            const { error } = await supabase
+                .from('users')
+                .update({ name: name.trim() })
+                .eq('id', user.id);
+
+            if (error) throw error;
+            toast.success('Nome atualizado!');
+        } catch (error) {
+            toast.error('Erro ao salvar');
+        }
+    };
+
+    const handleLogout = () => {
+        openConfirmDialog({
+            title: 'Sair da conta?',
+            description: 'Você precisará fazer login novamente.',
+            onConfirm: signOut,
+        });
+    };
+
+    return (
+        <PageContainer>
+            <h1 className="text-2xl font-bold mb-6">Configurações</h1>
+
+            {/* Perfil */}
+            <Card className="p-4 mb-4">
+                <div className="flex items-center gap-2 mb-4">
+                    <User className="h-5 w-5" />
+                    <h2 className="font-semibold">Perfil</h2>
+                </div>
+
+                <div className="space-y-4">
+                    <div>
+                        <Label htmlFor="name">Nome</Label>
+                        <div className="flex gap-2 mt-1">
+                            <Input
+                                id="name"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                            />
+                            <Button onClick={handleSaveName}>Salvar</Button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <Label>Email</Label>
+                        <p className="text-sm text-muted-foreground mt-1">{user?.email}</p>
+                    </div>
+                </div>
+            </Card>
+
+            {/* Aparência */}
+            <Card className="p-4 mb-4">
+                <div className="flex items-center gap-2 mb-4">
+                    {theme === 'ocean' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                    <h2 className="font-semibold">Aparência</h2>
+                </div>
+
+                <div className="flex items-center justify-between">
+                    <div>
+                        <p className="font-medium">Tema</p>
+                        <p className="text-sm text-muted-foreground">
+                            {theme === 'ocean' ? 'Oceano (claro)' : 'Midnight (escuro)'}
+                        </p>
+                    </div>
+                    <Switch
+                        checked={theme === 'midnight'}
+                        onCheckedChange={(checked) => {
+                            console.log('Theme switch clicked, new value:', checked ? 'midnight' : 'ocean');
+                            setTheme(checked ? 'midnight' : 'ocean');
+                        }}
+                    />
+                </div>
+            </Card>
+
+            {/* Parceiro */}
+            <Card className="p-4 mb-4">
+                <div className="flex items-center gap-2 mb-4">
+                    <Users className="h-5 w-5" />
+                    <h2 className="font-semibold">Parceiro</h2>
+                </div>
+
+                {partner ? (
+                    <div>
+                        <p className="font-medium">{partner.name}</p>
+                        <p className="text-sm text-muted-foreground">{partner.email}</p>
+                    </div>
+                ) : (
+                    <p className="text-sm text-muted-foreground">Nenhum parceiro vinculado</p>
+                )}
+            </Card>
+
+            {/* Código de pareamento */}
+            <Card className="p-4 mb-4">
+                <div className="flex items-center gap-2 mb-4">
+                    <Bell className="h-5 w-5" />
+                    <h2 className="font-semibold">Seu código</h2>
+                </div>
+
+                <code className="text-lg font-mono font-bold tracking-widest bg-muted px-3 py-1 rounded">
+                    {user?.pairing_code || '------'}
+                </code>
+            </Card>
+
+            {/* Sair */}
+            <Button variant="outline" className="w-full" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Sair da conta
+            </Button>
+        </PageContainer>
+    );
 }

@@ -84,40 +84,24 @@ export function useAuth() {
     };
 
     // Pareamento
+    // Pareamento
     const pairWithPartner = async (partnerCode: string) => {
         if (!user) throw new Error('Usuário não autenticado');
 
-        // Buscar parceiro pelo código
-        const { data: partnerData, error: findError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('pairing_code', partnerCode.toUpperCase())
-            .single();
+        const { data, error } = await supabase.rpc('pair_users', {
+            partner_code_input: partnerCode
+        });
 
-        if (findError || !partnerData) {
-            throw new Error('Código inválido');
+        if (error) throw error;
+
+        // RPC returns { success: boolean, message?: string, partner?: User }
+        if (!data.success) {
+            throw new Error(data.message || 'Erro ao parear');
         }
 
-        if (partnerData.partner_id) {
-            throw new Error('Esta pessoa já tem um parceiro vinculado');
-        }
+        // Force reload user data to update local state
+        await fetchUser();
 
-        // Vincular os dois
-        const { error: updateError } = await supabase
-            .from('users')
-            .update({ partner_id: partnerData.id })
-            .eq('id', user.id);
-
-        if (updateError) throw updateError;
-
-        const { error: updatePartnerError } = await supabase
-            .from('users')
-            .update({ partner_id: user.id })
-            .eq('id', partnerData.id);
-
-        if (updatePartnerError) throw updatePartnerError;
-
-        setPartner(partnerData as User);
         router.push('/');
     };
 
@@ -126,7 +110,7 @@ export function useAuth() {
         fetchUser();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (event) => {
+            async (event: string) => {
                 if (event === 'SIGNED_IN') {
                     await fetchUser();
                 } else if (event === 'SIGNED_OUT') {

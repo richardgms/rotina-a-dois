@@ -23,7 +23,7 @@ import { ENERGY_LABELS, MOOD_LABELS } from '@/types';
 import { addDays, subDays } from 'date-fns';
 
 export default function DashboardPage() {
-    const { partner, user } = useAuth();
+    const { partner, user, isLoading } = useAuth();
     const { routinesForDay, fetchRoutines, isLoading: routinesLoading } = useRoutines();
     const { todayTasks, progress, nextTask, fetchTaskLogs, initializeDayTasks, setTaskStatus } = useTaskLogs();
     const { fetchDailyStatus, saveDailyStatus, activateDifficultDay } = useDailyStatus();
@@ -32,6 +32,13 @@ export default function DashboardPage() {
 
     const router = useRouter();
     const isToday = checkIsToday(selectedDate);
+
+    // Proteção de rota no lado do cliente (fail-safe)
+    useEffect(() => {
+        if (!isLoading && !user) {
+            router.push('/login');
+        }
+    }, [user, isLoading, router]);
 
     // Carregar dados
     useEffect(() => {

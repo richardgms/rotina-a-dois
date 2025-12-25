@@ -29,16 +29,10 @@ export async function middleware(request: NextRequest) {
         }
     );
 
-    let user = null;
-    try {
-        const {
-            data: { user: authUser },
-        } = await supabase.auth.getUser();
-        user = authUser;
-    } catch (err) {
-        console.error('Middleware auth error:', err);
-        // Em caso de erro de conexão, prosseguir como não autenticado
-    }
+    // Verificação de autenticação rigorosa
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
 
     // Rotas públicas
     const publicRoutes = ['/login', '/auth/callback'];

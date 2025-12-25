@@ -9,18 +9,21 @@ import { useAuth } from '@/hooks/useAuth';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { toast } from 'sonner';
 
+import { signInWithMagicLink } from './actions';
+// ... imports
+
 export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isSent, setIsSent] = useState(false);
-    const { signInWithEmail, signInWithGoogle } = useAuth();
+    const { signInWithGoogle } = useAuth(); // Keep for Google if needed, or move to action too? Google needs client redirect usually.
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
 
         try {
-            await signInWithEmail(email);
+            await signInWithMagicLink(email);
             setIsSent(true);
             toast.success('Link enviado! Verifique seu email.');
         } catch (error) {

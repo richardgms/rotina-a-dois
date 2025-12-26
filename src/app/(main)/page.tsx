@@ -26,7 +26,7 @@ import { getSupabaseClient } from '@/lib/supabase/client';
 
 export default function DashboardPage() {
     const { partner, user, isLoading } = useAuth();
-    const { routinesForDay, fetchRoutines, isLoading: routinesLoading } = useRoutines();
+    const { routinesForDay, isLoading: routinesLoading } = useRoutines();
     const { todayTasks, progress, nextTask, fetchTaskLogs, initializeDayTasks, setTaskStatus } = useTaskLogs();
     const { fetchDailyStatus, saveDailyStatus, activateDifficultDay } = useDailyStatus();
     const { selectedDate: rawSelectedDate, setSelectedDate, dailyStatus, isFocusMode } = useRoutineStore();

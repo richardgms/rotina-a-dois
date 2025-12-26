@@ -8,7 +8,6 @@ import { toast } from 'sonner';
 import type { User } from '@/types';
 
 export function useAuth() {
-    console.log('useAuth chamado');
     const router = useRouter();
     const pathname = usePathname();
     const supabase = getSupabaseClient();

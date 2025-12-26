@@ -58,7 +58,7 @@ export function useCalendarData() {
 
             // Indexar logs por data para acesso O(1)
             const logsByDate = new Map<string, TaskLog[]>();
-            taskLogs?.forEach((log) => {
+            taskLogs?.forEach((log: any) => {
                 const date = log.date;
                 if (!logsByDate.has(date)) logsByDate.set(date, []);
                 logsByDate.get(date)?.push(log as TaskLog);
@@ -66,7 +66,7 @@ export function useCalendarData() {
 
             // Indexar status por data
             const statusByDate = new Map<string, DailyStatus>();
-            dailyStatus?.forEach((status) => {
+            dailyStatus?.forEach((status: any) => {
                 statusByDate.set(status.date, status as DailyStatus);
             });
 

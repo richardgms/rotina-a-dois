@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CheckCircle2, Clock, XCircle, SkipForward } from 'lucide-react';
+import { CheckCircle2, Clock, XCircle, SkipForward, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { PageContainer } from '@/components/layout/PageContainer';
@@ -11,17 +12,24 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { FeedbackButtons } from '@/components/partner/FeedbackButtons';
 import { useAuth } from '@/hooks/useAuth';
 import { getSupabaseClient } from '@/lib/supabase/client';
-import { format } from 'date-fns';
+import { format, addDays, subDays, isToday, isTomorrow, isYesterday } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { ENERGY_LABELS, MOOD_LABELS } from '@/types';
 import type { DailyStatus, TaskLog } from '@/types';
 
 export default function PartnerPage() {
     const { partner } = useAuth();
     const [isLoading, setIsLoading] = useState(true);
+    const [selectedDate, setSelectedDate] = useState(new Date());
     const [partnerStatus, setPartnerStatus] = useState<DailyStatus | null>(null);
     const [partnerTasks, setPartnerTasks] = useState<TaskLog[]>([]);
     const [partnerIcons, setPartnerIcons] = useState<Record<string, { icon: string; time: string | null }>>({});
     const supabase = getSupabaseClient();
+
+    // Navegação de data
+    const handlePrevDay = () => setSelectedDate((prev) => subDays(prev, 1));
+    const handleNextDay = () => setSelectedDate((prev) => addDays(prev, 1));
+    const handleToday = () => setSelectedDate(new Date());
 
     useEffect(() => {
         async function fetchPartnerData() {
@@ -30,14 +38,14 @@ export default function PartnerPage() {
                 return;
             }
 
-            const today = format(new Date(), 'yyyy-MM-dd');
+            const currentDateStr = format(selectedDate, 'yyyy-MM-dd');
 
             // Buscar status do dia
             const { data: status } = await supabase
                 .from('daily_status')
                 .select('*')
                 .eq('user_id', partner.id)
-                .eq('date', today)
+                .eq('date', currentDateStr)
                 .single();
 
             // Buscar tarefas do dia
@@ -45,7 +53,7 @@ export default function PartnerPage() {
                 .from('task_logs')
                 .select('*')
                 .eq('user_id', partner.id)
-                .eq('date', today);
+                .eq('date', currentDateStr);
 
             // Buscar ícones e HORÁRIOS das rotinas
             type RoutineInfo = { icon: string; time: string | null };
@@ -94,7 +102,7 @@ export default function PartnerPage() {
         }
 
         fetchPartnerData();
-    }, [partner, supabase]);
+    }, [partner, supabase, selectedDate]);
 
     if (isLoading) return <LoadingPage />;
 
@@ -165,7 +173,26 @@ export default function PartnerPage() {
 
             {/* Tarefas do parceiro */}
             <div>
-                <h2 className="text-sm font-medium mb-3">Tarefas de hoje:</h2>
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-sm font-medium">
+                        {isToday(selectedDate) ? 'Tarefas de hoje' :
+                            isTomorrow(selectedDate) ? 'Tarefas de amanhã' :
+                                isYesterday(selectedDate) ? 'Tarefas de ontem' :
+                                    `Tarefas de ${format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}`}
+                    </h2>
+
+                    <div className="flex items-center gap-1 bg-secondary/50 rounded-lg p-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handlePrevDay}>
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleToday}>
+                            <Calendar className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleNextDay}>
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
 
                 {partnerTasks.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">

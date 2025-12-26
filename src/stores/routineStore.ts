@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { Routine, TaskLog, DailyStatus } from '@/types';
 
 interface RoutineState {
@@ -7,7 +8,7 @@ interface RoutineState {
     todayTasks: TaskLog[];
     dailyStatus: DailyStatus | null;
     selectedDay: number; // 0-6
-    selectedDate: Date;
+    selectedDate: Date | string; // Date object or ISO string for persistence
     isLoading: boolean;
     isFocusMode: boolean;
 }
@@ -27,63 +28,75 @@ interface RoutineActions {
 }
 
 export const useRoutineStore = create<RoutineState & RoutineActions>()(
-    immer((set) => ({
-        routines: [],
-        todayTasks: [],
-        dailyStatus: null,
-        selectedDay: new Date().getDay(),
-        selectedDate: new Date(),
-        isLoading: true,
-        isFocusMode: false,
+    persist(
+        immer((set) => ({
+            routines: [],
+            todayTasks: [],
+            dailyStatus: null,
+            selectedDay: new Date().getDay(),
+            selectedDate: new Date(),
+            isLoading: true, // Initial load is true, but persisted state might override or we handle hydration
+            isFocusMode: false,
 
-        setRoutines: (routines) => set({ routines }),
+            setRoutines: (routines) => set({ routines }),
 
-        setTodayTasks: (todayTasks) => set({ todayTasks }),
+            setTodayTasks: (todayTasks) => set({ todayTasks }),
 
-        setDailyStatus: (dailyStatus) => set({ dailyStatus }),
+            setDailyStatus: (dailyStatus) => set({ dailyStatus }),
 
-        setSelectedDay: (selectedDay) => set({ selectedDay }),
+            setSelectedDay: (selectedDay) => set({ selectedDay }),
 
-        setSelectedDate: (selectedDate) =>
-            set({
-                selectedDate,
-                selectedDay: selectedDate.getDay()
-            }),
+            setSelectedDate: (date) =>
+                set({
+                    selectedDate: date,
+                    selectedDay: date.getDay()
+                }),
 
-        setLoading: (isLoading) => set({ isLoading }),
+            setLoading: (isLoading) => set({ isLoading }),
 
-        toggleFocusMode: () =>
-            set((state) => {
-                state.isFocusMode = !state.isFocusMode;
-            }),
+            toggleFocusMode: () =>
+                set((state) => {
+                    state.isFocusMode = !state.isFocusMode;
+                }),
 
-        updateTaskStatus: (taskId, status) =>
-            set((state) => {
-                const task = state.todayTasks.find((t) => t.id === taskId);
-                if (task) {
-                    task.status = status;
-                    if (status === 'done') {
-                        task.completed_at = new Date().toISOString();
+            updateTaskStatus: (taskId, status) =>
+                set((state) => {
+                    const task = state.todayTasks.find((t) => t.id === taskId);
+                    if (task) {
+                        task.status = status;
+                        if (status === 'done') {
+                            task.completed_at = new Date().toISOString();
+                        }
                     }
-                }
-            }),
+                }),
 
-        addRoutine: (routine) =>
-            set((state) => {
-                state.routines.push(routine);
-            }),
+            addRoutine: (routine) =>
+                set((state) => {
+                    state.routines.push(routine);
+                }),
 
-        updateRoutine: (id, updates) =>
-            set((state) => {
-                const index = state.routines.findIndex((r) => r.id === id);
-                if (index !== -1) {
-                    state.routines[index] = { ...state.routines[index], ...updates };
-                }
-            }),
+            updateRoutine: (id, updates) =>
+                set((state) => {
+                    const index = state.routines.findIndex((r) => r.id === id);
+                    if (index !== -1) {
+                        state.routines[index] = { ...state.routines[index], ...updates };
+                    }
+                }),
 
-        deleteRoutine: (id) =>
-            set((state) => {
-                state.routines = state.routines.filter((r) => r.id !== id);
+            deleteRoutine: (id) =>
+                set((state) => {
+                    state.routines = state.routines.filter((r) => r.id !== id);
+                }),
+        })),
+        {
+            name: 'routine-storage',
+            storage: createJSONStorage(() => localStorage),
+            partialize: (state) => ({
+                routines: state.routines,
+                todayTasks: state.todayTasks,
+                dailyStatus: state.dailyStatus,
+                // Don't persist selectedDate to avoid opening on wrong day
             }),
-    }))
+        }
+    )
 );

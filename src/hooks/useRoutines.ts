@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { useRoutineStore } from '@/stores/routineStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -20,14 +20,21 @@ export function useRoutines() {
         deleteRoutine,
     } = useRoutineStore();
 
-    // Buscar rotinas do usuário
+    const hasFetched = useRef(false);
+
+    // Buscar rotinas do usuário - OTIMIZADO
     const fetchRoutines = useCallback(async () => {
         if (!user) {
             setLoading(false);
             return;
         }
 
-        setLoading(true);
+        // Só mostra loading se não temos dados ainda
+        const hasData = useRoutineStore.getState().routines.length > 0;
+        if (!hasData) {
+            setLoading(true);
+        }
+
         try {
             const { data, error } = await supabase
                 .from('routines')
@@ -45,8 +52,11 @@ export function useRoutines() {
         }
     }, [user, supabase, setRoutines, setLoading]);
 
-    // Rotinas do dia selecionado
-    const routinesForDay = routines.filter((r) => r.day_of_week === selectedDay);
+    // Rotinas do dia selecionado - MEMOIZADO
+    const routinesForDay = useMemo(
+        () => routines.filter((r) => r.day_of_week === selectedDay),
+        [routines, selectedDay]
+    );
 
     // Criar nova rotina
     const createRoutine = async (data: Omit<Routine, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {

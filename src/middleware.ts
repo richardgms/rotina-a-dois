@@ -29,13 +29,13 @@ export async function middleware(request: NextRequest) {
         }
     );
 
-    // Verificação de autenticação rigorosa
+    // Verificação de autenticação - apenas getUser (1 query)
     const {
         data: { user },
     } = await supabase.auth.getUser();
 
     // Rotas públicas
-    const publicRoutes = ['/login', '/auth/callback'];
+    const publicRoutes = ['/login', '/auth/callback', '/pairing'];
     const isPublicRoute = publicRoutes.some((route) =>
         request.nextUrl.pathname.startsWith(route)
     );
@@ -54,20 +54,8 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(url);
     }
 
-    // Verificar pareamento (exceto na página de pairing)
-    if (user && !request.nextUrl.pathname.startsWith('/pairing')) {
-        const { data: userData } = await supabase
-            .from('users')
-            .select('partner_id')
-            .eq('id', user.id)
-            .single();
-
-        if (!userData?.partner_id) {
-            const url = request.nextUrl.clone();
-            url.pathname = '/pairing';
-            return NextResponse.redirect(url);
-        }
-    }
+    // NOTA: Verificação de pareamento movida para o lado do cliente (useAuth)
+    // para evitar query extra no middleware em CADA requisição
 
     return supabaseResponse;
 }

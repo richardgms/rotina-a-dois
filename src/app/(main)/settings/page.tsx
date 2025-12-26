@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LogOut, Moon, Sun, User, Bell, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Skeleton } from '@/components/ui/skeleton';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
@@ -15,11 +16,18 @@ import { getSupabaseClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 
 export default function SettingsPage() {
-    const { user, partner, signOut } = useAuth();
+    const { user, partner, signOut, isLoading } = useAuth();
     const { theme, setTheme } = useTheme();
     const { openConfirmDialog } = useUIStore();
-    const [name, setName] = useState(user?.name || '');
+    const [name, setName] = useState('');
     const supabase = getSupabaseClient();
+
+    // Sincronizar nome quando user carregar
+    useEffect(() => {
+        if (user?.name) {
+            setName(user.name);
+        }
+    }, [user?.name]);
 
     const handleSaveName = async () => {
         if (!user || !name.trim()) return;
@@ -44,6 +52,28 @@ export default function SettingsPage() {
             onConfirm: signOut,
         });
     };
+
+    // Skeleton durante carregamento
+    if (isLoading) {
+        return (
+            <PageContainer>
+                <Skeleton className="h-8 w-48 mb-6" />
+                <Card className="p-4 mb-4">
+                    <Skeleton className="h-6 w-24 mb-4" />
+                    <Skeleton className="h-10 w-full mb-2" />
+                    <Skeleton className="h-4 w-32" />
+                </Card>
+                <Card className="p-4 mb-4">
+                    <Skeleton className="h-6 w-24 mb-4" />
+                    <Skeleton className="h-10 w-full" />
+                </Card>
+                <Card className="p-4 mb-4">
+                    <Skeleton className="h-6 w-24 mb-4" />
+                    <Skeleton className="h-4 w-48" />
+                </Card>
+            </PageContainer>
+        );
+    }
 
     return (
         <PageContainer>

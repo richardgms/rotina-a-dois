@@ -39,7 +39,7 @@ export default function RoutinesPage() {
                 await createRoutine({
                     ...data,
                     day_of_week: selectedDay
-                } as any);
+                } as Omit<Routine, 'id' | 'user_id' | 'created_at' | 'updated_at'>);
             }
         } catch (error) {
             console.error('Failed to save routine', error);

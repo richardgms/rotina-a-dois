@@ -52,12 +52,13 @@ export function useDailyStatus() {
 
             if (error) throw error;
             setDailyStatus(data as DailyStatus);
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const err = error as { message?: string; code?: string; details?: string; hint?: string };
             console.error('Erro ao salvar daily status:', {
-                message: error.message,
-                code: error.code,
-                details: error.details,
-                hint: error.hint
+                message: err.message,
+                code: err.code,
+                details: err.details,
+                hint: err.hint
             });
             throw error;
         }

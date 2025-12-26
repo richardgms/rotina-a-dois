@@ -118,7 +118,7 @@ export function useRoutines() {
             .select();
 
         if (error) throw error;
-        data?.forEach((r: any) => addRoutine(r as Routine));
+        (data as Routine[])?.forEach((r) => addRoutine(r));
     };
 
     // Reordenar rotinas
@@ -128,12 +128,15 @@ export function useRoutines() {
             sort_order: index,
         }));
 
-        for (const update of updates) {
-            await supabase
-                .from('routines')
-                .update({ sort_order: update.sort_order })
-                .eq('id', update.id);
-        }
+        // Re-ordenar em paralelo
+        await Promise.all(
+            updates.map((update) =>
+                supabase
+                    .from('routines')
+                    .update({ sort_order: update.sort_order })
+                    .eq('id', update.id)
+            )
+        );
 
         await fetchRoutines();
     };

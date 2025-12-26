@@ -38,13 +38,14 @@ export default function DashboardPage() {
     const router = useRouter();
     const isToday = checkIsToday(selectedDate);
 
-    console.log('Dashboard render:', { user: user?.id, isLoading, date: selectedDate });
+
 
     // Proteção de rota no lado do cliente (fail-safe)
     useEffect(() => {
         if (!isLoading && !user) {
-            console.log('Dashboard: redirecionando para login');
-            router.push('/login');
+            if (!isLoading && !user) {
+                router.push('/login');
+            }
         }
     }, [user, isLoading, router]);
 
@@ -54,11 +55,12 @@ export default function DashboardPage() {
 
     // Resetar fetch quando a data mudar
     useEffect(() => {
-        const dateStr = rawSelectedDate instanceof Date ? rawSelectedDate.toISOString().split('T')[0] : new Date(rawSelectedDate).toISOString().split('T')[0];
+        const dateStr = format(new Date(rawSelectedDate), 'yyyy-MM-dd');
         if (lastFetchDateRef.current !== dateStr) {
-            console.log('Dashboard: data mudou, resetando fetch flag', { old: lastFetchDateRef.current, new: dateStr });
-            hasFetchedRef.current = false;
-            lastFetchDateRef.current = dateStr;
+            if (lastFetchDateRef.current !== dateStr) {
+                hasFetchedRef.current = false;
+                lastFetchDateRef.current = dateStr;
+            }
         }
     }, [rawSelectedDate]);
 
@@ -76,7 +78,7 @@ export default function DashboardPage() {
             }
 
             hasFetchedRef.current = true;
-            console.log('Dashboard: iniciando fetches para user', user.id);
+            hasFetchedRef.current = true;
 
             try {
                 // Buscar diretamente do Supabase, sem depender dos hooks
@@ -86,7 +88,7 @@ export default function DashboardPage() {
                 const today = format(targetDate, 'yyyy-MM-dd');
                 const dayOfWeek = targetDate.getDay();
 
-                console.log('Dashboard: executando queries...', { today, dayOfWeek });
+
 
                 const [routinesResult, taskLogsResult, statusResult] = await Promise.all([
                     supabase
@@ -110,43 +112,34 @@ export default function DashboardPage() {
                 ]);
 
 
-                console.log('Dashboard: queries concluídas', {
-                    routines: routinesResult.data?.length,
-                    taskLogs: taskLogsResult.data?.length,
-                    status: statusResult.data
-                });
-
                 if (routinesResult.error) console.error('Erro routines:', routinesResult.error);
                 if (taskLogsResult.error) console.error('Erro taskLogs:', taskLogsResult.error);
                 if (statusResult.error) console.error('Erro status:', statusResult.error);
 
-                useRoutineStore.getState().setRoutines(routinesResult.data || []);
-                useRoutineStore.getState().setTodayTasks(taskLogsResult.data || []);
+                const routines = routinesResult.data || [];
+                const tasks = taskLogsResult.data || [];
+
+                useRoutineStore.getState().setRoutines(routines as any);
+                useRoutineStore.getState().setTodayTasks(tasks as any);
                 useRoutineStore.getState().setDailyStatus(statusResult.data || null);
 
-                // Important: delay turning off loading slightly to ensure state propagation? 
-                // No, just set it.
                 useRoutineStore.getState().setLoading(false);
-
-                console.log('Dashboard: dados setados nas stores via getState()');
                 setDailyStatusLoaded(true);
+
+                // Initialize day tasks SEQUENTIALLY if needed
+                if (routines.length > 0 && tasks.length === 0 && isToday) {
+                    await initializeDayTasks(routines as any);
+                }
 
             } catch (error) {
                 console.error('Dashboard: ERRO nos fetches:', error);
-                hasFetchedRef.current = false; // Permitir tentar de novo em caso de erro?
+                hasFetchedRef.current = false;
                 useRoutineStore.getState().setLoading(false);
             }
         }
 
         loadDashboardData();
-    }, [user, rawSelectedDate]); // Use rawSelectedDate instead of new Date object
-
-    // Inicializar tarefas do dia (apenas quando necessário)
-    useEffect(() => {
-        if (routinesForDay.length > 0 && todayTasks.length === 0 && isToday) {
-            initializeDayTasks(routinesForDay);
-        }
-    }, [routinesForDay, todayTasks.length, isToday, initializeDayTasks]);
+    }, [user, rawSelectedDate, isToday, initializeDayTasks]); // Added isToday and initializeDayTasks to dependencies
 
     // Mostrar picker de energia/humor - só uma vez por dia por sessão
     const [dailyStatusLoaded, setDailyStatusLoaded] = useState(false);

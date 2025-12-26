@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { format } from 'date-fns';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { useRoutineStore } from '@/stores/routineStore';
@@ -22,7 +22,7 @@ export function useTaskLogs() {
         try {
             const { data, error } = await supabase
                 .from('task_logs')
-                .select('*')
+                .select('id, user_id, routine_id, date, status, task_name, completed_at, subtasks_completed')
                 .eq('user_id', user.id)
                 .eq('date', dateStr)
                 .order('created_at');
@@ -34,51 +34,62 @@ export function useTaskLogs() {
         }
     }, [user, selectedDate, supabase, setTodayTasks]);
 
+    const initializingRef = useRef(false);
+
     // Criar logs do dia baseado nas rotinas - IDEMPOTENTE E ROBUSTO
-    const initializeDayTasks = async (routines: { id: string; task_name: string }[]) => {
-        if (!user) return;
+    const initializeDayTasks = useCallback(async (routines: { id: string; task_name: string }[]) => {
+        if (!user || initializingRef.current) return;
 
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
-        // 1. Buscar quais rotinas JÁ têm log hoje
-        const { data: existingLogs, error: fetchError } = await supabase
-            .from('task_logs')
-            .select('routine_id')
-            .eq('user_id', user.id)
-            .eq('date', dateStr);
+        try {
+            initializingRef.current = true;
 
-        if (fetchError) {
-            console.error('Erro ao verificar logs existentes:', fetchError);
-            return;
+            // 1. Buscar quais rotinas JÁ têm log hoje
+            const { data: existingLogs, error: fetchError } = await supabase
+                .from('task_logs')
+                .select('routine_id')
+                .eq('user_id', user.id)
+                .eq('date', dateStr);
+
+            if (fetchError) {
+                console.error('Erro ao verificar logs existentes:', fetchError);
+                return;
+            }
+
+            const existingRoutineIds = new Set(existingLogs?.map((l: { routine_id: string }) => l.routine_id));
+
+            // 2. Identificar quais rotinas faltam criar log
+            // Filter out routines that already have a log
+            const missingRoutines = routines.filter(r => !existingRoutineIds.has(r.id));
+
+            if (missingRoutines.length === 0) return;
+
+            console.log(`Criando ${missingRoutines.length} logs que faltavam para hoje...`);
+
+            // 3. Criar apenas os logs faltantes
+            const logs = missingRoutines.map((r) => ({
+                user_id: user.id,
+                routine_id: r.id,
+                date: dateStr,
+                task_name: r.task_name,
+                status: 'pending' as TaskStatus,
+            }));
+
+            const { error: insertError } = await supabase
+                .from('task_logs')
+                .insert(logs);
+
+            if (insertError) throw insertError;
+
+            // 4. Forçar atualização da lista para refletir os novos itens
+            await fetchTaskLogs();
+        } catch (err) {
+            console.error('Erro ao inicializar tarefas:', err);
+        } finally {
+            initializingRef.current = false;
         }
-
-        const existingRoutineIds = new Set(existingLogs?.map((l: { routine_id: string }) => l.routine_id));
-
-        // 2. Identificar quais rotinas faltam criar log
-        const missingRoutines = routines.filter(r => !existingRoutineIds.has(r.id));
-
-        if (missingRoutines.length === 0) return;
-
-        console.log(`Criando ${missingRoutines.length} logs que faltavam para hoje...`);
-
-        // 3. Criar apenas os logs faltantes
-        const logs = missingRoutines.map((r) => ({
-            user_id: user.id,
-            routine_id: r.id,
-            date: dateStr,
-            task_name: r.task_name,
-            status: 'pending' as TaskStatus,
-        }));
-
-        const { error: insertError } = await supabase
-            .from('task_logs')
-            .insert(logs);
-
-        if (insertError) throw insertError;
-
-        // 4. Forçar atualização da lista para refletir os novos itens
-        await fetchTaskLogs();
-    };
+    }, [user, selectedDate, supabase, fetchTaskLogs]);
 
     // Atualizar status de uma tarefa
     const setTaskStatus = async (taskId: string, status: TaskStatus) => {

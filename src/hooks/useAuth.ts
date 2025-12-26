@@ -4,6 +4,7 @@ import { useEffect, useCallback, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/authStore';
+import { toast } from 'sonner';
 import type { User } from '@/types';
 
 export function useAuth() {
@@ -16,29 +17,20 @@ export function useAuth() {
 
     const fetchingRef = useRef(false);
 
-    // Buscar usuário atual - OTIMIZADO com Promise.all
+    // Buscar usuário atual
     const fetchUser = useCallback(async () => {
-        if (fetchingRef.current) {
-            console.log('>>> fetchUser: já em andamento, ignorando');
-            return null;
-        }
+        if (fetchingRef.current) return null;
 
         fetchingRef.current = true;
-        console.log('>>> fetchUser: iniciando');
 
         try {
             const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
 
-            console.log('>>> fetchUser: auth.getUser resultado:', { authUser: authUser?.id, authError });
-
             if (authError || !authUser) {
-                console.log('>>> fetchUser: sem usuário autenticado');
                 setUser(null);
                 setLoading(false);
                 return null;
             }
-
-            console.log('>>> fetchUser: buscando dados do usuário no banco...');
 
             // Buscar dados do usuário
             const { data: userData, error: dbError } = await supabase
@@ -47,24 +39,18 @@ export function useAuth() {
                 .eq('id', authUser.id)
                 .single();
 
-            console.log('>>> fetchUser: dados do banco:', { userData, dbError });
-
             if (dbError) {
-                console.error('>>> fetchUser: erro no banco:', dbError);
+                console.error('Erro ao buscar usuário:', dbError);
+                toast.error('Erro ao carregar dados do usuário.');
                 setUser(null);
                 setLoading(false);
                 return null;
             }
 
-            console.log('>>> fetchUser: setando user:', userData.id);
-
             // Buscar parceiro em PARALELO se existir partner_id
             if (userData?.partner_id) {
-                // Atualiza user primeiro para exibir dados rapidamente
                 setUser(userData as User);
 
-                console.log('>>> fetchUser: buscando parceiro...');
-                // Busca parceiro em background
                 const { data: partnerData } = await supabase
                     .from('users')
                     .select('*')
@@ -72,7 +58,6 @@ export function useAuth() {
                     .single();
 
                 if (partnerData) {
-                    console.log('>>> fetchUser: parceiro encontrado', partnerData.id);
                     setPartner(partnerData as User);
                 }
             } else {
@@ -82,7 +67,7 @@ export function useAuth() {
             setLoading(false);
             return userData;
         } catch (error) {
-            console.error('>>> fetchUser: ERRO:', error);
+            console.error('Erro no fetchUser:', error);
             setUser(null);
             setLoading(false);
             return null;
@@ -140,31 +125,19 @@ export function useAuth() {
         router.push('/');
     };
 
-    // Listener de auth - OTIMIZADO para evitar múltiplos fetches
+    // Listener de auth simplification
     useEffect(() => {
-        // Evita fetch duplicado se já foi feito
         if (!hasFetched.current) {
-            console.log('>>> useAuth useEffect: chamando fetchUser (primeira vez)');
             hasFetched.current = true;
             fetchUser();
-        } else {
-            console.log('>>> useAuth useEffect: fetchUser já foi chamado, ignorando');
         }
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (event: string, session: any) => {
-                console.log('>>> Auth change event:', event);
-
-                // Só reagir se realmente necessário
-                const shouldFetch = (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && !user;
-
-                if (shouldFetch) {
-                    console.log('>>> Auth change: fetching user because not loaded yet');
+            async (event: string) => {
+                if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && !user) {
                     await fetchUser();
                 } else if (event === 'SIGNED_OUT') {
                     logout();
-                } else {
-                    console.log('>>> Auth change: ignorando pois user já existe ou evento irrelevante');
                 }
             }
         );

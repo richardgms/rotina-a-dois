@@ -16,7 +16,7 @@ export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isSent, setIsSent] = useState(false);
-    const { signInWithGoogle } = useAuth(); // Keep for Google if needed, or move to action too? Google needs client redirect usually.
+    const { signInWithGoogle } = useAuth();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

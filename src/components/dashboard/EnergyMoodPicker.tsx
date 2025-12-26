@@ -41,10 +41,11 @@ export function EnergyMoodPicker({ open, onClose, onSave }: EnergyMoodPickerProp
                 setIsSaving(true);
                 await onSave(energy, mood);
                 onClose();
-            } catch (error: any) {
+            } catch (error: unknown) {
                 // Error is handled by the hook (logged)
                 console.error("Save error:", error);
-                alert(`Erro ao salvar: ${error.message || JSON.stringify(error)}`);
+                const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+                alert(`Erro ao salvar: ${errorMessage}`);
                 setIsSaving(false);
             }
         }

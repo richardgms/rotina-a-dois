@@ -5,6 +5,7 @@ import { format, eachDayOfInterval } from 'date-fns';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/authStore';
 
+import type { TaskLog, DailyStatus } from '@/types';
 interface DayStats {
     date: Date;
     taskCount: number;
@@ -55,13 +56,27 @@ export function useCalendarData() {
             const statsMap = new Map<string, DayStats>();
             const days = eachDayOfInterval({ start: startDate, end: endDate });
 
+            // Indexar logs por data para acesso O(1)
+            const logsByDate = new Map<string, TaskLog[]>();
+            taskLogs?.forEach((log) => {
+                const date = log.date;
+                if (!logsByDate.has(date)) logsByDate.set(date, []);
+                logsByDate.get(date)?.push(log as TaskLog);
+            });
+
+            // Indexar status por data
+            const statusByDate = new Map<string, DailyStatus>();
+            dailyStatus?.forEach((status) => {
+                statusByDate.set(status.date, status as DailyStatus);
+            });
+
             days.forEach((date) => {
                 const dateKey = format(date, 'yyyy-MM-dd');
-                const dayLogs = taskLogs?.filter((log: any) => log.date === dateKey) || [];
-                const dayStatus = dailyStatus?.find((s: any) => s.date === dateKey);
+                const dayLogs = logsByDate.get(dateKey) || [];
+                const dayStatus = statusByDate.get(dateKey);
 
                 const taskCount = dayLogs.length;
-                const completedCount = dayLogs.filter((log: any) => log.status === 'done').length;
+                const completedCount = dayLogs.filter((log) => log.status === 'done').length;
                 const percentage = taskCount > 0 ? Math.round((completedCount / taskCount) * 100) : 0;
 
                 statsMap.set(dateKey, {
@@ -69,8 +84,8 @@ export function useCalendarData() {
                     taskCount,
                     completedCount,
                     percentage,
-                    energy: dayStatus?.energy_level,
-                    mood: dayStatus?.mood,
+                    energy: dayStatus?.energy_level || undefined,
+                    mood: dayStatus?.mood || undefined,
                 });
             });
 

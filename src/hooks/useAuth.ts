@@ -152,7 +152,7 @@ export function useAuth() {
         }
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (event: string, session) => {
+            async (event: string, session: any) => {
                 console.log('>>> Auth change event:', event);
 
                 // Só reagir se realmente necessário

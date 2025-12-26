@@ -41,6 +41,21 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var theme = localStorage.getItem('rotina-theme') || 'ocean';
+                  document.documentElement.setAttribute('data-theme', theme);
+                  var fontSize = localStorage.getItem('rotina-font-size') || 'normal'; // Check if needed
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

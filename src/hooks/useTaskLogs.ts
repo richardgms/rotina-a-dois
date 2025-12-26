@@ -34,24 +34,35 @@ export function useTaskLogs() {
         }
     }, [user, selectedDate, supabase, setTodayTasks]);
 
-    // Criar logs do dia baseado nas rotinas
+    // Criar logs do dia baseado nas rotinas - IDEMPOTENTE E ROBUSTO
     const initializeDayTasks = async (routines: { id: string; task_name: string }[]) => {
         if (!user) return;
 
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
-        // Verificar se já existem logs para hoje
-        const { data: existing } = await supabase
+        // 1. Buscar quais rotinas JÁ têm log hoje
+        const { data: existingLogs, error: fetchError } = await supabase
             .from('task_logs')
-            .select('id')
+            .select('routine_id')
             .eq('user_id', user.id)
-            .eq('date', dateStr)
-            .limit(1);
+            .eq('date', dateStr);
 
-        if (existing && existing.length > 0) return;
+        if (fetchError) {
+            console.error('Erro ao verificar logs existentes:', fetchError);
+            return;
+        }
 
-        // Criar logs para cada rotina
-        const logs = routines.map((r) => ({
+        const existingRoutineIds = new Set(existingLogs?.map((l: { routine_id: string }) => l.routine_id));
+
+        // 2. Identificar quais rotinas faltam criar log
+        const missingRoutines = routines.filter(r => !existingRoutineIds.has(r.id));
+
+        if (missingRoutines.length === 0) return;
+
+        console.log(`Criando ${missingRoutines.length} logs que faltavam para hoje...`);
+
+        // 3. Criar apenas os logs faltantes
+        const logs = missingRoutines.map((r) => ({
             user_id: user.id,
             routine_id: r.id,
             date: dateStr,
@@ -59,13 +70,14 @@ export function useTaskLogs() {
             status: 'pending' as TaskStatus,
         }));
 
-        const { data, error } = await supabase
+        const { error: insertError } = await supabase
             .from('task_logs')
-            .insert(logs)
-            .select();
+            .insert(logs);
 
-        if (error) throw error;
-        setTodayTasks(data as TaskLog[]);
+        if (insertError) throw insertError;
+
+        // 4. Forçar atualização da lista para refletir os novos itens
+        await fetchTaskLogs();
     };
 
     // Atualizar status de uma tarefa

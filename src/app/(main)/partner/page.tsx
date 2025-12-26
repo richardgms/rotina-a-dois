@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { CheckCircle2, Clock, XCircle, SkipForward } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
@@ -19,6 +20,7 @@ export default function PartnerPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [partnerStatus, setPartnerStatus] = useState<DailyStatus | null>(null);
     const [partnerTasks, setPartnerTasks] = useState<TaskLog[]>([]);
+    const [partnerIcons, setPartnerIcons] = useState<Record<string, { icon: string; time: string | null }>>({});
     const supabase = getSupabaseClient();
 
     useEffect(() => {
@@ -45,8 +47,49 @@ export default function PartnerPage() {
                 .eq('user_id', partner.id)
                 .eq('date', today);
 
+            // Buscar ícones e HORÁRIOS das rotinas
+            type RoutineInfo = { icon: string; time: string | null };
+            let taskDetails: Record<string, RoutineInfo> = {};
+
+            if (tasks && tasks.length > 0) {
+                console.log('>>> Tasks found:', tasks.length);
+                const routineIds = (tasks as TaskLog[]).map((t) => t.routine_id).filter(Boolean) as string[];
+                console.log('>>> Routine IDs to fetch:', routineIds);
+
+                if (routineIds.length > 0) {
+                    const { data: routines, error: routinesError } = await supabase
+                        .from('routines')
+                        .select('id, task_icon, scheduled_time')
+                        .in('id', routineIds);
+
+                    if (routinesError) {
+                        console.error('>>> Error fetching partner routines:', routinesError);
+                    } else {
+                        console.log('>>> Routines fetched:', routines?.length, routines);
+                        if (routines) {
+                            taskDetails = routines.reduce((acc: Record<string, RoutineInfo>, r: { id: string; task_icon: string; scheduled_time: string | null }) => ({
+                                ...acc,
+                                [r.id]: { icon: r.task_icon, time: r.scheduled_time }
+                            }), {});
+                        }
+                    }
+                }
+            }
+
             setPartnerStatus(status as DailyStatus | null);
-            setPartnerTasks((tasks as TaskLog[]) || []);
+            setPartnerIcons(taskDetails); // Renomear state seria ideal, mas vou manter para minimizar diff por enquanto, ajustando só o tipo no state
+
+            // Deduplicate tasks by routine_id (or task_name if routine_id missing) to fix display issues
+            const uniqueTasks = (tasks as TaskLog[] || []).reduce((acc: TaskLog[], current) => {
+                const x = acc.find(item => item.routine_id === current.routine_id);
+                if (!x) {
+                    return acc.concat([current]);
+                } else {
+                    return acc;
+                }
+            }, []);
+
+            setPartnerTasks(uniqueTasks);
             setIsLoading(false);
         }
 
@@ -133,11 +176,33 @@ export default function PartnerPage() {
                         {partnerTasks.map((task) => (
                             <Card key={task.id} className="p-3">
                                 <div className="flex items-center justify-between">
-                                    <span className={task.status === 'done' ? 'line-through text-muted-foreground' : ''}>
-                                        {task.task_name}
-                                    </span>
+                                    <div className="flex flex-col gap-1">
+                                        <div className="flex items-center">
+                                            <span className={task.status === 'done' ? 'line-through text-muted-foreground' : ''}>
+                                                <span className="mr-2">{partnerIcons[task.routine_id || '']?.icon || '📌'}</span>
+                                                {task.task_name}
+                                            </span>
+                                        </div>
+                                        {/* Exibir horário se disponível */}
+                                        {partnerIcons[task.routine_id || '']?.time && (
+                                            <span className="text-xs text-muted-foreground flex items-center gap-1 ml-6">
+                                                <Clock className="h-3 w-3" />
+                                                {partnerIcons[task.routine_id || '']?.time}
+                                            </span>
+                                        )}
+                                    </div>
                                     <span>
-                                        {task.status === 'done' ? '✅' : task.status === 'skipped' ? '⏭️' : '⬜'}
+                                        {(() => {
+                                            // Como estamos listando tarefas filtradas por "Hoje" no banco,
+                                            // não precisamos checar se é passado. Se é pendente, é relógio.
+                                            // O "X" só faria sentido em histórico.
+
+                                            if (task.status === 'done') return <CheckCircle2 className="h-5 w-5 text-green-500" />;
+                                            if (task.status === 'skipped') return <SkipForward className="h-5 w-5 text-muted-foreground" />;
+
+                                            // Pendente (Sempre Clock, pois a lista é de hoje)
+                                            return <Clock className="h-5 w-5 text-orange-400" />;
+                                        })()}
                                     </span>
                                 </div>
                             </Card>

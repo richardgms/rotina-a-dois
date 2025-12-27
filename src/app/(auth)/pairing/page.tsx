@@ -8,14 +8,16 @@ import { useAuth } from '@/hooks/useAuth';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { toast } from 'sonner';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, Info } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function PairingPage() {
     const [partnerCode, setPartnerCode] = useState('');
 
     const [isLoading, setIsLoading] = useState(false);
+    const [statusMessage, setStatusMessage] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
-    const { pairWithPartner, user } = useAuth();
+    const { user } = useAuth();
     const [myCode, setMyCode] = useState('');
     const supabase = getSupabaseClient();
 
@@ -51,16 +53,31 @@ export default function PairingPage() {
         setTimeout(() => setCopied(false), 2000);
     };
 
-    const handlePair = async (e: React.FormEvent) => {
+    const handleSendRequest = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!partnerCode.trim()) return;
 
         setIsLoading(true);
+        setStatusMessage(null);
+
         try {
-            await pairWithPartner(partnerCode.trim().toUpperCase());
-            toast.success('Pareado com sucesso!');
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Erro ao parear');
+            const { data, error } = await supabase.rpc('send_pairing_request', {
+                partner_code_input: partnerCode.trim().toUpperCase()
+            });
+
+            if (error) throw error;
+
+            if (data.success) {
+                toast.success(data.message);
+                setStatusMessage(data.message);
+                setPartnerCode('');
+            } else {
+                toast.error(data.error);
+                setStatusMessage(`Erro: ${data.error}`);
+            }
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.message || 'Erro ao enviar solicitação');
         } finally {
             setIsLoading(false);
         }
@@ -73,7 +90,7 @@ export default function PairingPage() {
                     <div className="text-5xl mb-4">💑</div>
                     <CardTitle>Conectar com Parceiro(a)</CardTitle>
                     <CardDescription>
-                        Compartilhe seu código ou insira o código do seu amor
+                        Compartilhe seu código ou adicione o código do seu amor para enviar uma solicitação.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -102,8 +119,19 @@ export default function PairingPage() {
                         </div>
                     </div>
 
+                    {/* Status Message */}
+                    {statusMessage && (
+                        <Alert className={statusMessage.startsWith('Erro') ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}>
+                            <Info className="h-4 w-4" />
+                            <AlertTitle>{statusMessage.startsWith('Erro') ? 'Atenção' : 'Sucesso'}</AlertTitle>
+                            <AlertDescription>
+                                {statusMessage}
+                            </AlertDescription>
+                        </Alert>
+                    )}
+
                     {/* Inserir código do parceiro */}
-                    <form onSubmit={handlePair} className="space-y-4">
+                    <form onSubmit={handleSendRequest} className="space-y-4">
                         <div className="space-y-2">
                             <p className="text-sm font-medium text-center">Código do parceiro(a):</p>
                             <Input
@@ -119,10 +147,10 @@ export default function PairingPage() {
                             {isLoading ? (
                                 <>
                                     <LoadingSpinner size="sm" className="mr-2" />
-                                    Conectando...
+                                    Enviando solicitação...
                                 </>
                             ) : (
-                                'Conectar 💕'
+                                'Enviar Solicitação 💕'
                             )}
                         </Button>
                     </form>

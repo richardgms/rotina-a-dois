@@ -55,7 +55,7 @@ export function WeekView({ days, onDayClick }: WeekViewProps) {
 
                         {day.energy && (
                             <p className="text-xs mt-1">
-                                {day.energy === 'high' ? '🔋' : day.energy === 'medium' ? '🔋' : '🪫'}
+                                {day.energy === 'high' ? '⚡' : day.energy === 'medium' ? '🔋' : '🪫'}
                             </p>
                         )}
                     </Card>

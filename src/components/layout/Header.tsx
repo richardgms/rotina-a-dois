@@ -5,6 +5,7 @@ import { Flame } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { getGreeting } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { NotificationBell } from '@/components/common/NotificationBell';
 
 interface HeaderProps {
     streak?: number;
@@ -37,12 +38,15 @@ export function Header({ streak = 0 }: HeaderProps) {
                     )}
                 </div>
 
-                {streak > 0 && (
-                    <div className="flex items-center gap-1 text-orange-500">
-                        <Flame className="h-5 w-5" />
-                        <span className="font-bold">{streak}</span>
-                    </div>
-                )}
+                <div className="flex items-center gap-4">
+                    {streak > 0 && (
+                        <div className="flex items-center gap-1 text-orange-500">
+                            <Flame className="h-5 w-5 fill-orange-500" />
+                            <span className="font-bold">{streak}</span>
+                        </div>
+                    )}
+                    <NotificationBell />
+                </div>
             </div>
         </header>
     );

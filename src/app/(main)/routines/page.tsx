@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, GripVertical, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PageContainer } from '@/components/layout/PageContainer';
@@ -96,8 +96,6 @@ export default function RoutinesPage() {
                         .map((routine) => (
                             <Card key={routine.id} className="p-3">
                                 <div className="flex items-center gap-3">
-                                    <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
-
                                     <span className="text-xl">{routine.task_icon}</span>
 
                                     <div className="flex-1 min-w-0">

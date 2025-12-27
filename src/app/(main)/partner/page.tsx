@@ -46,7 +46,7 @@ export default function PartnerPage() {
                 .select('*')
                 .eq('user_id', partner.id)
                 .eq('date', currentDateStr)
-                .single();
+                .maybeSingle();
 
             // Buscar tarefas do dia
             const { data: tasks } = await supabase

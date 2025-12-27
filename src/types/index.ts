@@ -123,6 +123,31 @@ export interface Streak {
     updated_at: string;
 }
 
+export interface Notification {
+    id: string;
+    user_id: string;
+    type: 'pairing_request' | 'pairing_accepted' | 'pairing_rejected';
+    title: string;
+    message: string | null;
+    data: {
+        from_user_id?: string;
+        from_user_name?: string;
+        partner_id?: string;
+    };
+    read: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface PairingRequest {
+    id: string;
+    from_user_id: string;
+    to_user_id: string;
+    status: 'pending' | 'accepted' | 'rejected';
+    created_at: string;
+    updated_at: string;
+}
+
 // ============================================
 // ENUMS E TIPOS AUXILIARES
 // ============================================

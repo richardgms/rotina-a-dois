@@ -24,9 +24,10 @@ export function useDailyStatus() {
                 .select('*')
                 .eq('user_id', user.id)
                 .eq('date', dateStr)
-                .single();
+                .eq('date', dateStr)
+                .maybeSingle();
 
-            if (error && error.code !== 'PGRST116') throw error;
+            if (error) throw error;
             setDailyStatus(data as DailyStatus | null);
         } catch (error) {
             console.error('Erro ao buscar daily status:', error);

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from 'sonner';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { AuthProvider } from '@/providers/AuthProvider';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -50,7 +51,7 @@ export default function RootLayout({
                 try {
                   var theme = localStorage.getItem('rotina-theme') || 'ocean';
                   document.documentElement.setAttribute('data-theme', theme);
-                  var fontSize = localStorage.getItem('rotina-font-size') || 'normal'; // Check if needed
+                  var fontSize = localStorage.getItem('rotina-font-size') || 'normal';
                 } catch (e) {}
               })();
             `,
@@ -61,7 +62,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ErrorBoundary>
-          {children}
+          <AuthProvider>
+            {children}
+          </AuthProvider>
         </ErrorBoundary>
         <Toaster position="top-center" />
       </body>

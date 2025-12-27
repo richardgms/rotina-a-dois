@@ -10,8 +10,11 @@ export async function signInWithMagicLink(email: string) {
     const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-            // Usa o origin da requisição ou fallback para localhost
-            emailRedirectTo: `${origin || 'http://localhost:3000'}/auth/callback`,
+            // IMPORTANTE: Usar a URL canônica de produção para garantir que bata com a whitelist do Supabase
+            // Se estivermos em localhost, usa localhost. Caso contrário, força a URL de produção.
+            emailRedirectTo: process.env.NODE_ENV === 'development'
+                ? 'http://localhost:3000/auth/callback'
+                : 'https://rotina-a-dois.netlify.app/auth/callback',
         },
     });
 

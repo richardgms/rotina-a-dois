@@ -121,22 +121,19 @@ export function useRoutines() {
         (data as Routine[])?.forEach((r) => addRoutine(r));
     };
 
-    // Reordenar rotinas
+    // Reordenar rotinas - batch upsert para melhor performance
     const reorderRoutines = async (routineIds: string[]) => {
         const updates = routineIds.map((id, index) => ({
             id,
             sort_order: index,
         }));
 
-        // Re-ordenar em paralelo
-        await Promise.all(
-            updates.map((update) =>
-                supabase
-                    .from('routines')
-                    .update({ sort_order: update.sort_order })
-                    .eq('id', update.id)
-            )
-        );
+        // Usar upsert para atualizar todos de uma vez
+        const { error } = await supabase
+            .from('routines')
+            .upsert(updates, { onConflict: 'id', ignoreDuplicates: false });
+
+        if (error) throw error;
 
         await fetchRoutines();
     };

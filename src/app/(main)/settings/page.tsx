@@ -16,7 +16,7 @@ import { getSupabaseClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 
 export default function SettingsPage() {
-    const { user, partner, signOut, isLoading } = useAuth();
+    const { user, partner, signOut, isLoading, unpairPartner } = useAuth();
     const { theme, setTheme } = useTheme();
     const { openConfirmDialog } = useUIStore();
     const [name, setName] = useState('');
@@ -123,7 +123,6 @@ export default function SettingsPage() {
                     <Switch
                         checked={theme === 'midnight'}
                         onCheckedChange={(checked) => {
-                            console.log('Theme switch clicked, new value:', checked ? 'midnight' : 'ocean');
                             setTheme(checked ? 'midnight' : 'ocean');
                         }}
                     />
@@ -139,8 +138,24 @@ export default function SettingsPage() {
 
                 {partner ? (
                     <div>
-                        <p className="font-medium">{partner.name}</p>
-                        <p className="text-sm text-muted-foreground">{partner.email}</p>
+                        <div className="mb-4">
+                            <p className="font-medium">{partner.name}</p>
+                            <p className="text-sm text-muted-foreground">{partner.email}</p>
+                        </div>
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => {
+                                openConfirmDialog({
+                                    title: 'Desvincular parceiro?',
+                                    description: 'Isso removerá a conexão entre vocês. O histórico individual será mantido.',
+                                    onConfirm: unpairPartner,
+                                });
+                            }}
+                        >
+                            Desvincular
+                        </Button>
                     </div>
                 ) : (
                     <p className="text-sm text-muted-foreground">Nenhum parceiro vinculado</p>

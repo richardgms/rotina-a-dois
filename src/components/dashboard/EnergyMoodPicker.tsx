@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import type { EnergyLevel, Mood } from '@/types';
 
 interface EnergyMoodPickerProps {
@@ -42,10 +43,8 @@ export function EnergyMoodPicker({ open, onClose, onSave }: EnergyMoodPickerProp
                 await onSave(energy, mood);
                 onClose();
             } catch (error: unknown) {
-                // Error is handled by the hook (logged)
-                console.error("Save error:", error);
                 const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-                alert(`Erro ao salvar: ${errorMessage}`);
+                toast.error(`Erro ao salvar: ${errorMessage}`);
                 setIsSaving(false);
             }
         }

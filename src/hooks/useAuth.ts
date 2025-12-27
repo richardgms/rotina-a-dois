@@ -13,67 +13,70 @@ export function useAuth() {
     const supabase = getSupabaseClient();
     const { user, partner, isLoading, isAuthenticated, setUser, setPartner, setLoading, logout } = useAuthStore();
     const hasFetched = useRef(false);
+    const fetchingPromiseRef = useRef<Promise<unknown> | null>(null);
 
-    const fetchingRef = useRef(false);
-
-    // Buscar usuário atual
     const fetchUser = useCallback(async () => {
-        if (fetchingRef.current) return null;
+        // Se já está buscando, retorna a Promise existente (evita race condition)
+        if (fetchingPromiseRef.current) {
+            return fetchingPromiseRef.current;
+        }
 
-        fetchingRef.current = true;
+        const fetchPromise = (async () => {
+            try {
+                const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
 
-        try {
-            const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+                if (authError || !authUser) {
+                    // Se não há usuário autenticado no Supabase, limpa o store local
+                    if (user) logout();
+                    setLoading(false);
+                    return null;
+                }
 
-            if (authError || !authUser) {
-                setUser(null);
-                setLoading(false);
-                return null;
-            }
-
-            // Buscar dados do usuário
-            const { data: userData, error: dbError } = await supabase
-                .from('users')
-                .select('*')
-                .eq('id', authUser.id)
-                .single();
-
-            if (dbError) {
-                console.error('Erro ao buscar usuário:', dbError);
-                toast.error('Erro ao carregar dados do usuário.');
-                setUser(null);
-                setLoading(false);
-                return null;
-            }
-
-            // Buscar parceiro em PARALELO se existir partner_id
-            if (userData?.partner_id) {
-                setUser(userData as User);
-
-                const { data: partnerData } = await supabase
+                // Buscar dados do usuário
+                const { data: userData, error: dbError } = await supabase
                     .from('users')
                     .select('*')
-                    .eq('id', userData.partner_id)
+                    .eq('id', authUser.id)
                     .single();
 
-                if (partnerData) {
-                    setPartner(partnerData as User);
+                if (dbError) {
+                    // toast.error('Erro ao carregar dados do usuário.');
+                    // setUser(null);
+                    setLoading(false);
+                    return null;
                 }
-            } else {
-                setUser(userData as User);
-            }
 
-            setLoading(false);
-            return userData;
-        } catch (error) {
-            console.error('Erro no fetchUser:', error);
-            setUser(null);
-            setLoading(false);
-            return null;
-        } finally {
-            fetchingRef.current = false;
-        }
-    }, [supabase, setUser, setPartner, setLoading]);
+                // Buscar parceiro em paralelo se existir partner_id
+                if (userData?.partner_id) {
+                    setUser(userData as User);
+
+                    const { data: partnerData } = await supabase
+                        .from('users')
+                        .select('*')
+                        .eq('id', userData.partner_id)
+                        .single();
+
+                    if (partnerData) {
+                        setPartner(partnerData as User);
+                    }
+                } else {
+                    setUser(userData as User);
+                }
+
+                setLoading(false);
+                return userData;
+            } catch {
+                // setUser(null);
+                setLoading(false);
+                return null;
+            } finally {
+                fetchingPromiseRef.current = null;
+            }
+        })();
+
+        fetchingPromiseRef.current = fetchPromise;
+        return fetchPromise;
+    }, [supabase, setUser, setPartner, setLoading, logout, user]);
 
     // Login com magic link
     const signInWithEmail = async (email: string) => {
@@ -99,12 +102,20 @@ export function useAuth() {
         if (error) throw error;
     };
 
-    // Logout
-    const signOut = async () => {
-        await supabase.auth.signOut();
-        logout();
-        router.push('/login');
-    };
+    // Logout memoizado para evitar re-renders e inconsistências
+    const signOut = useCallback(async () => {
+        try {
+            setLoading(true);
+            await supabase.auth.signOut();
+        } catch (error) {
+            console.error('Erro ao sair:', error);
+        } finally {
+            // Limpeza "nuclear" para garantir logout completo
+            logout();
+            // Força um full reload para limpar qualquer estado de memória e cache do Next.js
+            window.location.href = '/login';
+        }
+    }, [supabase.auth, logout, setLoading]);
 
     // Pareamento
     const pairWithPartner = async (partnerCode: string) => {
@@ -124,7 +135,7 @@ export function useAuth() {
         router.push('/');
     };
 
-    // Listener de auth simplification
+    // Listener de auth
     useEffect(() => {
         if (!hasFetched.current) {
             hasFetched.current = true;
@@ -133,16 +144,17 @@ export function useAuth() {
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event: string) => {
-                if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && !user) {
+                if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
                     await fetchUser();
                 } else if (event === 'SIGNED_OUT') {
                     logout();
+                    window.location.href = '/login';
                 }
             }
         );
 
         return () => subscription.unsubscribe();
-    }, [fetchUser, logout, supabase.auth, user]); // Added user dependency to check it inside listener
+    }, [fetchUser, logout, supabase.auth]);
 
     // Verificação de pareamento no cliente (movida do middleware)
     useEffect(() => {
@@ -150,6 +162,35 @@ export function useAuth() {
             router.push('/pairing');
         }
     }, [user, isLoading, pathname, router]);
+
+    // Desvincular parceiro
+    const unpairPartner = async () => {
+        if (!user) return;
+
+        // Tentar usar a RPC segura primeiro
+        const { error } = await supabase.rpc('unpair_users', {
+            user_id: user.id
+        });
+
+        if (error) {
+            console.error('Erro ao desvincular (RPC):', error);
+            // Fallback para update simples (funciona apenas para o lado do usuário se RPC falhar/não existir)
+            // Mas o ideal é que o usuário rode o SQL fornecido.
+            const { error: updateError } = await supabase
+                .from('users')
+                .update({ partner_id: null })
+                .eq('id', user.id);
+
+            if (updateError) throw updateError;
+        }
+
+        // Atualizar estado local
+        setPartner(null);
+        setUser({ ...user, partner_id: null });
+
+        await fetchUser();
+        toast.success('Parceiro desvinculado.');
+    };
 
     return {
         user,
@@ -160,6 +201,7 @@ export function useAuth() {
         signInWithGoogle,
         signOut,
         pairWithPartner,
+        unpairPartner,
         refetchUser: fetchUser,
     };
 }

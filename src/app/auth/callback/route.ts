@@ -1,5 +1,12 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { randomBytes } from 'crypto';
+
+// Gera código de pareamento criptograficamente seguro
+function generatePairingCode(): string {
+    const bytes = randomBytes(4);
+    return bytes.toString('hex').toUpperCase().substring(0, 6);
+}
 
 export async function GET(request: Request) {
     const requestUrl = new URL(request.url);
@@ -20,14 +27,21 @@ export async function GET(request: Request) {
 
             // Se não existe, criar
             if (!existingUser) {
-                const pairingCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+                const pairingCode = generatePairingCode();
+                const email = user.email ?? user.user_metadata?.email ?? '';
+                const name = email ? email.split('@')[0] : 'Usuário';
 
-                await supabase.from('users').insert({
+                const { error: insertError } = await supabase.from('users').insert({
                     id: user.id,
-                    email: user.email!,
-                    name: user.email!.split('@')[0],
+                    email,
+                    name,
                     pairing_code: pairingCode,
                 });
+
+                if (insertError) {
+                    // Erro ao criar usuário, redirecionar para login com erro
+                    return NextResponse.redirect(new URL('/login?error=user_creation_failed', requestUrl.origin));
+                }
 
                 // Redirecionar para pareamento
                 return NextResponse.redirect(new URL('/pairing', requestUrl.origin));

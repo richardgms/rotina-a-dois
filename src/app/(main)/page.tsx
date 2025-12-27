@@ -43,9 +43,7 @@ export default function DashboardPage() {
     // Proteção de rota no lado do cliente (fail-safe)
     useEffect(() => {
         if (!isLoading && !user) {
-            if (!isLoading && !user) {
-                router.push('/login');
-            }
+            router.push('/login');
         }
     }, [user, isLoading, router]);
 
@@ -57,10 +55,8 @@ export default function DashboardPage() {
     useEffect(() => {
         const dateStr = format(new Date(rawSelectedDate), 'yyyy-MM-dd');
         if (lastFetchDateRef.current !== dateStr) {
-            if (lastFetchDateRef.current !== dateStr) {
-                hasFetchedRef.current = false;
-                lastFetchDateRef.current = dateStr;
-            }
+            hasFetchedRef.current = false;
+            lastFetchDateRef.current = dateStr;
         }
     }, [rawSelectedDate]);
 
@@ -77,7 +73,6 @@ export default function DashboardPage() {
                 return;
             }
 
-            hasFetchedRef.current = true;
             hasFetchedRef.current = true;
 
             try {

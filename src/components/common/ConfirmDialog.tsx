@@ -15,8 +15,10 @@ import { useUIStore } from '@/stores/uiStore';
 export function ConfirmDialog() {
     const { isConfirmDialogOpen, confirmDialogData, closeConfirmDialog } = useUIStore();
 
-    const handleConfirm = () => {
-        confirmDialogData?.onConfirm();
+    const handleConfirm = async () => {
+        if (confirmDialogData?.onConfirm) {
+            await confirmDialogData.onConfirm();
+        }
         closeConfirmDialog();
     };
 

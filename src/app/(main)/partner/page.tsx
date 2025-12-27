@@ -60,9 +60,7 @@ export default function PartnerPage() {
             let taskDetails: Record<string, RoutineInfo> = {};
 
             if (tasks && tasks.length > 0) {
-                console.log('>>> Tasks found:', tasks.length);
                 const routineIds = (tasks as TaskLog[]).map((t) => t.routine_id).filter(Boolean) as string[];
-                console.log('>>> Routine IDs to fetch:', routineIds);
 
                 if (routineIds.length > 0) {
                     const { data: routines, error: routinesError } = await supabase
@@ -71,9 +69,8 @@ export default function PartnerPage() {
                         .in('id', routineIds);
 
                     if (routinesError) {
-                        console.error('>>> Error fetching partner routines:', routinesError);
+                        // Erro silenciado em produção
                     } else {
-                        console.log('>>> Routines fetched:', routines?.length, routines);
                         if (routines) {
                             taskDetails = routines.reduce((acc: Record<string, RoutineInfo>, r: { id: string; task_icon: string; scheduled_time: string | null }) => ({
                                 ...acc,

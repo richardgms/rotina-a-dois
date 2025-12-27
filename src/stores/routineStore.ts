@@ -8,7 +8,7 @@ interface RoutineState {
     todayTasks: TaskLog[];
     dailyStatus: DailyStatus | null;
     selectedDay: number; // 0-6
-    selectedDate: Date | string; // Date object or ISO string for persistence
+    selectedDate: string; // Always ISO string for consistency
     isLoading: boolean;
     isFocusMode: boolean;
 }
@@ -34,7 +34,7 @@ export const useRoutineStore = create<RoutineState & RoutineActions>()(
             todayTasks: [],
             dailyStatus: null,
             selectedDay: new Date().getDay(),
-            selectedDate: new Date(),
+            selectedDate: new Date().toISOString(),
             isLoading: true, // Initial load is true, but persisted state might override or we handle hydration
             isFocusMode: false,
 
@@ -48,7 +48,7 @@ export const useRoutineStore = create<RoutineState & RoutineActions>()(
 
             setSelectedDate: (date) =>
                 set({
-                    selectedDate: date,
+                    selectedDate: date.toISOString(),
                     selectedDay: date.getDay()
                 }),
 
@@ -93,8 +93,7 @@ export const useRoutineStore = create<RoutineState & RoutineActions>()(
             storage: createJSONStorage(() => localStorage),
             partialize: (state) => ({
                 routines: state.routines,
-                todayTasks: state.todayTasks,
-                dailyStatus: state.dailyStatus,
+                // Don't persist todayTasks to avoid stale data after midnight
                 // Don't persist selectedDate to avoid opening on wrong day
             }),
         }

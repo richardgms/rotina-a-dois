@@ -25,7 +25,29 @@ export function useAuth() {
             try {
                 console.log('[useAuth] Iniciando fetchUser...');
 
-                const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+                // Timeout de 10 segundos para supabase.auth.getUser()
+                const AUTH_TIMEOUT_MS = 10000;
+                const timeoutPromise = new Promise<never>((_, reject) => {
+                    setTimeout(() => reject(new Error('AUTH_TIMEOUT')), AUTH_TIMEOUT_MS);
+                });
+
+                let authUser;
+                let authError;
+
+                try {
+                    const result = await Promise.race([
+                        supabase.auth.getUser(),
+                        timeoutPromise
+                    ]);
+                    authUser = result.data?.user;
+                    authError = result.error;
+                    console.log('[useAuth] supabase.auth.getUser() completou');
+                } catch (timeoutErr) {
+                    console.error('[useAuth] TIMEOUT: supabase.auth.getUser() demorou mais de 10s');
+                    // Se timeout, limpar estado e permitir que o usuário tente de novo
+                    setLoading(false);
+                    return null;
+                }
 
                 if (authError) {
                     console.error('[useAuth] Erro ao obter usuário:', authError.message);
@@ -43,12 +65,31 @@ export function useAuth() {
 
                 console.log('[useAuth] Usuário autenticado:', authUser.id);
 
-                // Buscar dados do usuário
-                const { data: userData, error: dbError } = await supabase
-                    .from('users')
-                    .select('*')
-                    .eq('id', authUser.id)
-                    .single();
+                // Buscar dados do usuário com timeout também
+                const DB_TIMEOUT_MS = 10000;
+                const dbTimeoutPromise = new Promise<never>((_, reject) => {
+                    setTimeout(() => reject(new Error('DB_TIMEOUT')), DB_TIMEOUT_MS);
+                });
+
+                let userData;
+                let dbError;
+
+                try {
+                    const result = await Promise.race([
+                        supabase
+                            .from('users')
+                            .select('*')
+                            .eq('id', authUser.id)
+                            .single(),
+                        dbTimeoutPromise
+                    ]);
+                    userData = result.data;
+                    dbError = result.error;
+                } catch (timeoutErr) {
+                    console.error('[useAuth] TIMEOUT: busca de dados do usuário demorou mais de 10s');
+                    setLoading(false);
+                    return null;
+                }
 
                 if (dbError) {
                     console.error('[useAuth] Erro ao buscar dados do usuário:', dbError.message);

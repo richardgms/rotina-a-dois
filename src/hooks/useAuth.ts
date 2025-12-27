@@ -23,14 +23,25 @@ export function useAuth() {
 
         const fetchPromise = (async () => {
             try {
+                console.log('[useAuth] Iniciando fetchUser...');
+
                 const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
 
-                if (authError || !authUser) {
-                    // Se não há usuário autenticado no Supabase, limpa o store local
+                if (authError) {
+                    console.error('[useAuth] Erro ao obter usuário:', authError.message);
                     if (user) logout();
                     setLoading(false);
                     return null;
                 }
+
+                if (!authUser) {
+                    console.log('[useAuth] Nenhum usuário autenticado');
+                    if (user) logout();
+                    setLoading(false);
+                    return null;
+                }
+
+                console.log('[useAuth] Usuário autenticado:', authUser.id);
 
                 // Buscar dados do usuário
                 const { data: userData, error: dbError } = await supabase
@@ -40,23 +51,26 @@ export function useAuth() {
                     .single();
 
                 if (dbError) {
-                    // toast.error('Erro ao carregar dados do usuário.');
-                    // setUser(null);
+                    console.error('[useAuth] Erro ao buscar dados do usuário:', dbError.message);
                     setLoading(false);
                     return null;
                 }
 
-                // Buscar parceiro em paralelo se existir partner_id
+                console.log('[useAuth] Dados do usuário carregados');
+
+                // Buscar parceiro se existir partner_id
                 if (userData?.partner_id) {
                     setUser(userData as User);
 
-                    const { data: partnerData } = await supabase
+                    const { data: partnerData, error: partnerError } = await supabase
                         .from('users')
                         .select('*')
                         .eq('id', userData.partner_id)
                         .single();
 
-                    if (partnerData) {
+                    if (partnerError) {
+                        console.error('[useAuth] Erro ao buscar parceiro:', partnerError.message);
+                    } else if (partnerData) {
                         setPartner(partnerData as User);
                     }
                 } else {
@@ -64,9 +78,10 @@ export function useAuth() {
                 }
 
                 setLoading(false);
+                console.log('[useAuth] fetchUser concluído com sucesso');
                 return userData;
-            } catch {
-                // setUser(null);
+            } catch (error) {
+                console.error('[useAuth] Erro inesperado em fetchUser:', error);
                 setLoading(false);
                 return null;
             } finally {

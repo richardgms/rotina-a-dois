@@ -40,6 +40,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                     user: null,
                     partner: null,
                     isAuthenticated: false,
+                    isLoading: false, // IMPORTANTE: garantir que loading = false no logout
                 }),
         }),
         {
@@ -48,6 +49,16 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                 user: state.user,
                 partner: state.partner,
             }),
+            // Quando o store for reidratado do localStorage, garantir estado consistente
+            onRehydrateStorage: () => (state) => {
+                if (state) {
+                    // Se não há user no storage, garantir isLoading = false
+                    if (!state.user) {
+                        state.isLoading = false;
+                    }
+                    console.log('[authStore] Reidratado do localStorage, user:', state.user?.id || 'null');
+                }
+            },
         }
     )
 );

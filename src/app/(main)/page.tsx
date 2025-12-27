@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { CloudRain } from 'lucide-react';
+import { CloudRain, RefreshCw, AlertTriangle } from 'lucide-react';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { DayProgress } from '@/components/dashboard/DayProgress';
 import { PartnerCard } from '@/components/dashboard/PartnerCard';
@@ -11,6 +11,7 @@ import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { TaskList } from '@/components/dashboard/TaskList';
 import { DashboardSkeleton } from '@/components/dashboard/DashboardSkeleton';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { ENERGY_LABELS, MOOD_LABELS } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
 import { useRoutines } from '@/hooks/useRoutines';
@@ -31,7 +32,7 @@ export default function DashboardPage() {
     const isToday = checkIsToday(selectedDate);
 
     // Dados e Ações
-    const { isLoading: dashboardLoading, dailyStatus } = useDashboardData({ user, selectedDate });
+    const { isLoading: dashboardLoading, dailyStatus, error, timedOut, refetch } = useDashboardData({ user, selectedDate });
     const { routinesForDay } = useRoutines();
     const { todayTasks, progress, nextTask, setTaskStatus } = useTaskLogs();
     const { saveDailyStatus, activateDifficultDay } = useDailyStatus();
@@ -58,6 +59,30 @@ export default function DashboardPage() {
             openEnergyMood();
         }
     }, [isToday, dailyStatusLoaded, dailyStatus, openEnergyMood, dashboardLoading]);
+
+    // Estado de Erro ou Timeout
+    if (error || timedOut) {
+        return (
+            <PageContainer className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
+                <Card className="max-w-md w-full">
+                    <CardContent className="flex flex-col items-center gap-4 py-8">
+                        <AlertTriangle className="h-12 w-12 text-destructive" />
+                        <h2 className="text-lg font-semibold text-center">Ops! Algo deu errado</h2>
+                        <p className="text-sm text-muted-foreground text-center">
+                            {error || 'Não foi possível carregar os dados. Por favor, tente novamente.'}
+                        </p>
+                        <Button onClick={() => refetch()} className="gap-2">
+                            <RefreshCw className="h-4 w-4" />
+                            Tentar novamente
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => window.location.reload()}>
+                            Recarregar página
+                        </Button>
+                    </CardContent>
+                </Card>
+            </PageContainer>
+        );
+    }
 
     // Loading State
     if (dashboardLoading && routinesForDay.length === 0) {

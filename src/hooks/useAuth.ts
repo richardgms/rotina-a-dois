@@ -7,13 +7,19 @@ import { useAuthStore } from '@/stores/authStore';
 import { toast } from 'sonner';
 import type { User } from '@/types';
 
+// CORREÇÃO 2: hasFetched global (nível do módulo) - garante 1 fetch por sessão do app
+let globalHasFetched = false;
+
 export function useAuth() {
     const router = useRouter();
     const pathname = usePathname();
     const supabase = getSupabaseClient();
     const { user, partner, isLoading, isAuthenticated, setUser, setPartner, setLoading, logout } = useAuthStore();
-    const hasFetched = useRef(false);
     const fetchingPromiseRef = useRef<Promise<unknown> | null>(null);
+
+    // CORREÇÃO 1: useRef para acessar user atual sem colocar nas dependências
+    const userRef = useRef(user);
+    userRef.current = user;
 
     const fetchUser = useCallback(async () => {
         // Se já está buscando, retorna a Promise existente (evita race condition)
@@ -51,14 +57,16 @@ export function useAuth() {
 
                 if (authError) {
                     console.error('[useAuth] Erro ao obter usuário:', authError.message);
-                    if (user) logout();
+                    // CORREÇÃO 1: usar userRef em vez de user
+                    if (userRef.current) logout();
                     setLoading(false);
                     return null;
                 }
 
                 if (!authUser) {
                     console.log('[useAuth] Nenhum usuário autenticado');
-                    if (user) logout();
+                    // CORREÇÃO 1: usar userRef em vez de user
+                    if (userRef.current) logout();
                     setLoading(false);
                     return null;
                 }
@@ -132,7 +140,8 @@ export function useAuth() {
 
         fetchingPromiseRef.current = fetchPromise;
         return fetchPromise;
-    }, [supabase, setUser, setPartner, setLoading, logout, user]);
+        // CORREÇÃO 1: Removido 'user' das dependências - usar userRef.current em vez disso
+    }, [supabase, setUser, setPartner, setLoading, logout]);
 
     // Login com magic link
     const signInWithEmail = async (email: string) => {
@@ -168,6 +177,7 @@ export function useAuth() {
         } finally {
             // Limpeza "nuclear" para garantir logout completo
             logout();
+            globalHasFetched = false; // Reset para permitir novo fetch após login
             // Força um full reload para limpar qualquer estado de memória e cache do Next.js
             window.location.href = '/login';
         }
@@ -175,7 +185,7 @@ export function useAuth() {
 
     // Pareamento
     const pairWithPartner = async (partnerCode: string) => {
-        if (!user) throw new Error('Usuário não autenticado');
+        if (!userRef.current) throw new Error('Usuário não autenticado');
 
         const { data, error } = await supabase.rpc('pair_users', {
             partner_code_input: partnerCode
@@ -191,19 +201,30 @@ export function useAuth() {
         router.push('/');
     };
 
-    // Listener de auth
+    // Listener de auth - CORREÇÃO 2: usa globalHasFetched, CORREÇÃO 5: evita duplicação
     useEffect(() => {
-        if (!hasFetched.current) {
-            hasFetched.current = true;
+        // CORREÇÃO 2: só chama se nunca chamou globalmente
+        if (!globalHasFetched) {
+            globalHasFetched = true;
+            console.log('[useAuth] Primeiro fetch global iniciado');
             fetchUser();
         }
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event: string) => {
-                if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                console.log('[useAuth] onAuthStateChange:', event);
+
+                // CORREÇÃO 5: Só chamar fetchUser se:
+                // - TOKEN_REFRESHED (precisa atualizar dados)
+                // - SIGNED_IN e NÃO temos user no store (primeiro login)
+                if (event === 'TOKEN_REFRESHED') {
+                    await fetchUser();
+                } else if (event === 'SIGNED_IN' && !userRef.current) {
+                    // Só busca se não tem user - evita duplicação no load inicial
                     await fetchUser();
                 } else if (event === 'SIGNED_OUT') {
                     logout();
+                    globalHasFetched = false; // Reset para próximo login
                     window.location.href = '/login';
                 }
             }

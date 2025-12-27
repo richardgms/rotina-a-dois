@@ -52,11 +52,15 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             // Quando o store for reidratado do localStorage, garantir estado consistente
             onRehydrateStorage: () => (state) => {
                 if (state) {
-                    // Se não há user no storage, garantir isLoading = false
-                    if (!state.user) {
+                    // CORREÇÃO 3: Se tem user no storage, já está autenticado - não precisa esperar Supabase
+                    if (state.user) {
                         state.isLoading = false;
+                        state.isAuthenticated = true;
+                        console.log('[authStore] Reidratado com user, isLoading = false');
+                    } else {
+                        state.isLoading = false;
+                        console.log('[authStore] Reidratado sem user');
                     }
-                    console.log('[authStore] Reidratado do localStorage, user:', state.user?.id || 'null');
                 }
             },
         }

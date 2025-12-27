@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 export const useNotifications = () => {
     const supabase = createClient();
@@ -26,7 +27,9 @@ export const useNotifications = () => {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
+
             setNotifications(data || []);
+
         } catch (error) {
             console.error('Erro ao buscar notificações:', error);
         }
@@ -85,18 +88,38 @@ export const useNotifications = () => {
         }
     };
 
-    // Polling inicial e periódico
+    // Polling inicial e configuração do Realtime
     useEffect(() => {
-        if (user) {
-            fetchNotifications();
+        if (!user) return;
 
-            // Atualizar a cada 30 segundos
-            const interval = setInterval(fetchNotifications, 30000);
-            return () => clearInterval(interval);
-        }
-    }, [user, fetchNotifications]);
+        // Buscar inicial
+        fetchNotifications();
 
-    // Opcional: Realtime subscription pode ser adicionado aqui depois
+        // Configurar Realtime
+        const channel = supabase
+            .channel('notifications_realtime')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*', // Escutar INSERT, UPDATE e DELETE
+                    schema: 'public',
+                    table: 'notifications',
+                    filter: `user_id=eq.${user.id}` // Filtro crucial de segurança e performance
+                },
+                (payload) => {
+                    console.log('[useNotifications] Realtime event:', payload);
+                    // Como a lógica de merge seria complexa para DELETE/UPDATE, 
+                    // o mais seguro é refazer o fetch completo
+                    fetchNotifications();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            console.log('[useNotifications] Cleanup');
+            supabase.removeChannel(channel);
+        };
+    }, [user, fetchNotifications, supabase]);
 
     return {
         notifications,

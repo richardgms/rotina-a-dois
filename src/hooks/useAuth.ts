@@ -94,19 +94,18 @@ export function useAuth() {
     const unpairPartner = useCallback(async () => {
         if (!userRef.current) return;
 
-        const { error } = await supabase.rpc('unpair_users', {
+        const { data, error } = await supabase.rpc('unpair_users', {
             user_id: userRef.current.id
         });
 
         if (error) {
             console.error('Erro ao desvincular (RPC):', error);
-            // Fallback para update simples
-            const { error: updateError } = await supabase
-                .from('users')
-                .update({ partner_id: null })
-                .eq('id', userRef.current.id);
+            throw new Error('Erro ao desvincular: ' + error.message);
+        }
 
-            if (updateError) throw updateError;
+        // Verificar resposta da RPC
+        if (data && !data.success) {
+            throw new Error(data.message || 'Erro ao desvincular');
         }
 
         // Atualizar estado local
@@ -115,7 +114,7 @@ export function useAuth() {
             setUser({ ...userRef.current, partner_id: null });
         }
 
-        toast.success('Parceiro desvinculado.');
+        toast.success('Parceiro desvinculado com sucesso!');
     }, [supabase, setUser, setPartner]);
 
     // Recarregar dados do usuário

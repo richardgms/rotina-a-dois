@@ -126,7 +126,7 @@ export interface Streak {
 export interface Notification {
     id: string;
     user_id: string;
-    type: 'pairing_request' | 'pairing_accepted' | 'pairing_rejected';
+    type: 'pairing_request' | 'pairing_accepted' | 'pairing_rejected' | 'partner_unpaired';
     title: string;
     message: string | null;
     data: {

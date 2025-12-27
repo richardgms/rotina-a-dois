@@ -23,7 +23,7 @@ export function PartnerCard({ partner, status, progress }: PartnerCardProps) {
 
     return (
         <Link href="/partner">
-            <Card className="p-4 hover:bg-accent/50 transition-colors">
+            <Card className="p-4 hover:bg-accent/30 transition-colors border-[0.5px] shadow-none bg-card/20">
                 <div className="flex items-center gap-3">
                     <Avatar className="h-12 w-12">
                         <AvatarImage src={partner.avatar_url || undefined} alt={partner.name} />

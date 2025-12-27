@@ -18,7 +18,7 @@ export function BottomNav() {
 
     return (
         <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t safe-bottom">
-            <div className="flex items-center justify-around h-16">
+            <div className="flex items-center justify-around h-14">
                 {navItems.map((item) => {
                     const isActive = pathname === item.href;
                     const Icon = item.icon;
@@ -28,14 +28,14 @@ export function BottomNav() {
                             key={item.href}
                             href={item.href}
                             className={cn(
-                                'flex flex-col items-center justify-center w-full h-full gap-1 transition-colors',
+                                'flex flex-col items-center justify-center w-full h-full gap-0.5 transition-colors',
                                 isActive
                                     ? 'text-primary'
                                     : 'text-muted-foreground hover:text-foreground'
                             )}
                         >
                             <Icon className="h-5 w-5" />
-                            <span className="text-xs">{item.label}</span>
+                            <span className="text-[10px]">{item.label}</span>
                         </Link>
                     );
                 })}

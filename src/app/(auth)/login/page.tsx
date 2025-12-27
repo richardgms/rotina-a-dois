@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,17 +8,35 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/hooks/useAuth';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { toast } from 'sonner';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 import { signInWithMagicLink } from './actions';
-// ... imports
 
-export default function LoginPage() {
+function LoginForm() {
     const [email, setEmail] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isSent, setIsSent] = useState(false);
     const { signInWithGoogle } = useAuth();
+    const searchParams = useSearchParams();
+    const router = useRouter();
+
+    useEffect(() => {
+        const error = searchParams.get('error');
+        const message = searchParams.get('message');
+        const code = searchParams.get('code');
+
+        if (error) {
+            toast.error(message ? decodeURIComponent(message) : 'Erro na autenticação');
+            // Limpar URL
+            router.replace('/login');
+        } else if (code) {
+            // Se cair aqui com code, é porque algo falhou no server-side ou redirect incorreto
+            toast.error('O link pode ter expirado ou ser inválido. Tente novamente.');
+        }
+    }, [searchParams, router]);
 
     const handleSubmit = async (e: React.FormEvent) => {
+
         e.preventDefault();
         setIsLoading(true);
 
@@ -132,5 +150,13 @@ export default function LoginPage() {
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><LoadingSpinner /></div>}>
+            <LoginForm />
+        </Suspense>
     );
 }

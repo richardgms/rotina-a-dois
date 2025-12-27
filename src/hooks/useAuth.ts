@@ -159,6 +159,10 @@ export function useAuth() {
     // Verificação de pareamento no cliente (movida do middleware)
     useEffect(() => {
         if (!isLoading && user && !user.partner_id && pathname !== '/pairing') {
+            const skipUntil = localStorage.getItem('skip_pairing_until');
+            if (skipUntil && parseInt(skipUntil) > Date.now()) {
+                return;
+            }
             router.push('/pairing');
         }
     }, [user, isLoading, pathname, router]);

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { CloudRain } from 'lucide-react';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { DayProgress } from '@/components/dashboard/DayProgress';
 import { PartnerCard } from '@/components/dashboard/PartnerCard';
@@ -9,7 +10,8 @@ import { EnergyMoodPicker } from '@/components/dashboard/EnergyMoodPicker';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { TaskList } from '@/components/dashboard/TaskList';
 import { DashboardSkeleton } from '@/components/dashboard/DashboardSkeleton';
-
+import { Button } from '@/components/ui/button';
+import { ENERGY_LABELS, MOOD_LABELS } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
 import { useRoutines } from '@/hooks/useRoutines';
 import { useTaskLogs } from '@/hooks/useTaskLogs';
@@ -65,45 +67,72 @@ export default function DashboardPage() {
     const completedTasks = todayTasks.filter((t) => t.status === 'done').length;
 
     return (
-        <PageContainer>
-            <DashboardHeader
-                selectedDate={selectedDate}
-                onDateChange={setSelectedDate}
-                dailyStatus={dailyStatus}
-                showDifficultDayButton={isToday && todayTasks.length > 0}
-                onDifficultDayClick={activateDifficultDay}
-            />
+        <PageContainer className="flex flex-col h-[calc(100vh-8rem)] !p-0 md:!p-6">
+            {/* Sticky Header */}
+            <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-2 border-b flex flex-col items-center mb-0 md:bg-transparent md:backdrop-blur-none md:border-none md:static">
+                <DashboardHeader
+                    selectedDate={selectedDate}
+                    onDateChange={setSelectedDate}
+                // dailyStatus and difficultDay logic moved to body
+                />
+            </div>
 
-            {/* Progresso Geral */}
-            {todayTasks.length > 0 && (
-                <div className="mb-6">
-                    <DayProgress
-                        percentage={progress}
-                        totalTasks={todayTasks.length}
-                        completedTasks={completedTasks}
-                    />
+            <div className="flex-1 overflow-y-auto w-full px-4 pt-6 md:px-0 scroll-smooth pb-20">
+                {/* Status Section */}
+                <div className="flex flex-col gap-2 mb-2">
+                    {dailyStatus?.energy_level && dailyStatus?.mood && (
+                        <div className="flex items-center justify-center gap-4 text-xs font-medium text-muted-foreground bg-muted/30 py-1.5 rounded-full mx-auto px-6">
+                            <span>{ENERGY_LABELS[dailyStatus.energy_level].icon} {ENERGY_LABELS[dailyStatus.energy_level].label}</span>
+                            <div className="w-1 h-1 rounded-full bg-border" />
+                            <span>{MOOD_LABELS[dailyStatus.mood].icon} {MOOD_LABELS[dailyStatus.mood].label}</span>
+                        </div>
+                    )}
+
+                    {/* Botão dia difícil */}
+                    {isToday && todayTasks.length > 0 && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs text-muted-foreground hover:text-primary hover:bg-transparent self-center h-6"
+                            onClick={activateDifficultDay}
+                        >
+                            <CloudRain className="h-3 w-3 mr-1.5" />
+                            Marcar como dia difícil
+                        </Button>
+                    )}
                 </div>
-            )}
 
-            {/* Lista de Tarefas / Modo Foco */}
-            <TaskList
-                tasks={todayTasks}
-                routines={routinesForDay}
-                isFocusMode={isFocusMode}
-                onTaskStatusChange={setTaskStatus}
-                nextTask={nextTask}
-            />
+                {/* Progresso Geral */}
+                {todayTasks.length > 0 && (
+                    <div className="mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                        <DayProgress
+                            percentage={progress}
+                            totalTasks={todayTasks.length}
+                            completedTasks={completedTasks}
+                        />
+                    </div>
+                )}
 
-            {/* Card do Parceiro */}
-            {partner && (
-                <div className="mt-6">
-                    <PartnerCard
-                        partner={partner}
-                        status={null} // Será implementado no futuro via contexto/store de parceiro
-                        progress={0}
-                    />
-                </div>
-            )}
+                {/* Lista de Tarefas / Modo Foco */}
+                <TaskList
+                    tasks={todayTasks}
+                    routines={routinesForDay}
+                    isFocusMode={isFocusMode}
+                    onTaskStatusChange={setTaskStatus}
+                    nextTask={nextTask}
+                />
+
+                {/* Card do Parceiro */}
+                {partner && (
+                    <div className="mt-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300 fill-mode-backwards">
+                        <PartnerCard
+                            partner={partner}
+                            status={null}
+                            progress={0}
+                        />
+                    </div>
+                )}
+            </div>
 
             <EnergyMoodPicker
                 open={isEnergyMoodOpen}

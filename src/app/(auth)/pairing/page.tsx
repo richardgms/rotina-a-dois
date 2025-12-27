@@ -8,11 +8,23 @@ import { useAuth } from '@/hooks/useAuth';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { toast } from 'sonner';
-import { Copy, Check, Info } from 'lucide-react';
+import { Copy, Check, Info, X } from 'lucide-react';
+import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+import { useRouter } from 'next/navigation';
 
 export default function PairingPage() {
     const [partnerCode, setPartnerCode] = useState('');
+    const router = useRouter();
+
+    const handleSkip = () => {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0);
+        localStorage.setItem('skip_pairing_until', tomorrow.getTime().toString());
+        router.push('/');
+    };
 
     const [isLoading, setIsLoading] = useState(false);
     const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -84,9 +96,19 @@ export default function PairingPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4">
-            <Card className="w-full max-w-md">
-                <CardHeader className="text-center">
+        <div className="min-h-screen flex items-center justify-center p-4 relative">
+            {/* X Button for absolute positioning if needed, but putting it inside card is better contextually */}
+            <Card className="w-full max-w-md relative">
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-2 top-2 text-muted-foreground hover:text-foreground"
+                    onClick={handleSkip}
+                >
+                    <X className="h-4 w-4" />
+                </Button>
+
+                <CardHeader className="text-center pt-10">
                     <div className="text-5xl mb-4">💑</div>
                     <CardTitle>Conectar com Parceiro(a)</CardTitle>
                     <CardDescription>
@@ -143,16 +165,28 @@ export default function PairingPage() {
                             />
                         </div>
 
-                        <Button type="submit" className="w-full" disabled={isLoading || partnerCode.length < 6}>
-                            {isLoading ? (
-                                <>
-                                    <LoadingSpinner size="sm" className="mr-2" />
-                                    Enviando solicitação...
-                                </>
-                            ) : (
-                                'Enviar Solicitação 💕'
-                            )}
-                        </Button>
+                        <div className="space-y-4">
+                            <Button type="submit" className="w-full" disabled={isLoading || partnerCode.length < 6}>
+                                {isLoading ? (
+                                    <>
+                                        <LoadingSpinner size="sm" className="mr-2" />
+                                        Enviando solicitação...
+                                    </>
+                                ) : (
+                                    'Enviar Solicitação 💕'
+                                )}
+                            </Button>
+
+                            <div className="text-center">
+                                <Button
+                                    variant="link"
+                                    className="text-sm text-muted-foreground hover:text-primary underline-offset-4 hover:underline h-auto p-0"
+                                    onClick={handleSkip}
+                                >
+                                    Conectar depois
+                                </Button>
+                            </div>
+                        </div>
                     </form>
                 </CardContent>
             </Card>

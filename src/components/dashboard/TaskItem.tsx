@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Clock, ChevronDown, ChevronUp, SkipForward, RotateCcw } from 'lucide-react';
+import { Check, Clock, ChevronDown, ChevronUp, SkipForward, RotateCcw, Pencil } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { cn, formatTime } from '@/lib/utils';
 import type { TaskLog, Routine, Subtask } from '@/types';
+import { TaskEditDialog } from './TaskEditDialog';
 
 interface TaskItemProps {
     task: TaskLog;
@@ -17,6 +18,7 @@ interface TaskItemProps {
 
 export function TaskItem({ task, routine, onStatusChange, onSubtaskToggle }: TaskItemProps) {
     const [isExpanded, setIsExpanded] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
 
     const hasSubtasks = routine?.subtasks && routine.subtasks.length > 0;
     const hasNote = routine?.note;
@@ -27,8 +29,8 @@ export function TaskItem({ task, routine, onStatusChange, onSubtaskToggle }: Tas
     return (
         <Card
             className={cn(
-                'p-4 transition-all',
-                task.status === 'done' && 'opacity-60 bg-muted/50',
+                'p-4 transition-all border-[0.5px] shadow-none bg-card/20',
+                task.status === 'done' && 'opacity-60 bg-muted/20',
                 task.status === 'skipped' && 'opacity-40'
             )}
         >
@@ -135,6 +137,19 @@ export function TaskItem({ task, routine, onStatusChange, onSubtaskToggle }: Tas
                     )}
                 </div>
 
+                {/* Botão editar */}
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground/50 hover:text-foreground"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setIsEditing(true);
+                    }}
+                >
+                    <Pencil className="h-3 w-3" />
+                </Button>
+
                 {/* Botão expandir */}
                 {isExpandable && (
                     <Button
@@ -158,6 +173,13 @@ export function TaskItem({ task, routine, onStatusChange, onSubtaskToggle }: Tas
                     </div>
                 )}
             </div>
+
+            <TaskEditDialog
+                open={isEditing}
+                onOpenChange={setIsEditing}
+                task={task}
+                routine={routine}
+            />
         </Card>
     );
 }

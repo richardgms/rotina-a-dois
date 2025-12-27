@@ -1,24 +1,16 @@
-import { ChevronLeft, ChevronRight, CloudRain } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatDateExtended, checkIsToday } from '@/lib/utils';
 import { addDays, subDays } from 'date-fns';
-import { ENERGY_LABELS, MOOD_LABELS } from '@/types';
-import type { DailyStatus } from '@/types';
 
 interface DashboardHeaderProps {
     selectedDate: Date;
     onDateChange: (date: Date) => void;
-    dailyStatus: DailyStatus | null;
-    onDifficultDayClick?: () => void;
-    showDifficultDayButton?: boolean;
 }
 
 export function DashboardHeader({
     selectedDate,
     onDateChange,
-    dailyStatus,
-    onDifficultDayClick,
-    showDifficultDayButton
 }: DashboardHeaderProps) {
     const isToday = checkIsToday(selectedDate);
 
@@ -30,51 +22,40 @@ export function DashboardHeader({
     };
 
     return (
-        <div className="mb-6">
-            {/* Navegação de data */}
-            <div className="flex items-center justify-between mb-4">
-                <Button variant="ghost" size="icon" onClick={() => navigateDay('prev')}>
-                    <ChevronLeft className="h-5 w-5" />
+        <div className="flex flex-col items-center w-full">
+            <div className="flex items-center justify-between w-full max-w-xs mb-2">
+                <Button variant="ghost" size="icon" onClick={() => navigateDay('prev')} className="h-12 w-12 hover:bg-muted/50">
+                    <ChevronLeft className="h-8 w-8 text-muted-foreground" />
                 </Button>
 
-                <div className="text-center">
-                    <p className="font-semibold capitalize">{formatDateExtended(selectedDate)}</p>
-                    {!isToday && (
-                        <Button
-                            variant="link"
-                            size="sm"
-                            className="text-xs"
-                            onClick={() => onDateChange(new Date())}
-                        >
-                            Voltar para hoje
-                        </Button>
-                    )}
-                </div>
+                <span className="text-xs font-bold text-primary uppercase tracking-[0.2em]">
+                    {isToday ? 'Hoje' : 'Dia'}
+                </span>
 
-                <Button variant="ghost" size="icon" onClick={() => navigateDay('next')}>
-                    <ChevronRight className="h-5 w-5" />
+                <Button variant="ghost" size="icon" onClick={() => navigateDay('next')} className="h-12 w-12 hover:bg-muted/50">
+                    <ChevronRight className="h-8 w-8 text-muted-foreground" />
                 </Button>
             </div>
 
-            {/* Status energia/humor */}
-            {dailyStatus?.energy_level && dailyStatus?.mood && (
-                <div className="flex items-center justify-center gap-4 mb-4 text-sm">
-                    <span>{ENERGY_LABELS[dailyStatus.energy_level].icon} {ENERGY_LABELS[dailyStatus.energy_level].label}</span>
-                    <span>{MOOD_LABELS[dailyStatus.mood].icon} {MOOD_LABELS[dailyStatus.mood].label}</span>
-                </div>
-            )}
+            <div className="flex flex-col items-center gap-1">
+                <h1 className="text-xl font-bold capitalize text-center">
+                    {formatDateExtended(selectedDate).split(',')[0]}
+                </h1>
+                <span className="text-sm text-muted-foreground capitalize">
+                    {formatDateExtended(selectedDate).split(',')[1]}
+                </span>
 
-            {/* Botão dia difícil */}
-            {showDifficultDayButton && onDifficultDayClick && (
-                <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={onDifficultDayClick}
-                >
-                    <CloudRain className="h-4 w-4 mr-2" />
-                    Dia difícil
-                </Button>
-            )}
+                {!isToday && (
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        className="h-7 text-xs px-3 rounded-full mt-1 font-medium bg-primary/10 text-primary hover:bg-primary/20"
+                        onClick={() => onDateChange(new Date())}
+                    >
+                        Voltar para hoje
+                    </Button>
+                )}
+            </div>
         </div>
     );
 }

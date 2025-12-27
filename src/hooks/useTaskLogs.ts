@@ -131,6 +131,32 @@ export function useTaskLogs() {
         ? Math.round((todayTasks.filter((t) => t.status === 'done').length / todayTasks.length) * 100)
         : 0;
 
+    // Atualizar dados da tarefa (nome, etc)
+    const updateTaskLog = async (taskId: string, data: Partial<TaskLog>) => {
+        const { error } = await supabase
+            .from('task_logs')
+            .update(data)
+            .eq('id', taskId);
+
+        if (error) throw error;
+
+        setTodayTasks(todayTasks.map(t =>
+            t.id === taskId ? { ...t, ...data } : t
+        ));
+    };
+
+    // Deletar tarefa (permanentemente do dia)
+    const deleteTaskLog = async (taskId: string) => {
+        const { error } = await supabase
+            .from('task_logs')
+            .delete()
+            .eq('id', taskId);
+
+        if (error) throw error;
+
+        setTodayTasks(todayTasks.filter(t => t.id !== taskId));
+    };
+
     // Próxima tarefa pendente
     const nextTask = todayTasks.find((t) => t.status === 'pending');
 
@@ -142,5 +168,7 @@ export function useTaskLogs() {
         initializeDayTasks,
         setTaskStatus,
         toggleSubtask,
+        updateTaskLog,
+        deleteTaskLog,
     };
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { LogOut, Moon, Sun, User, Bell, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -158,7 +159,14 @@ export default function SettingsPage() {
                         </Button>
                     </div>
                 ) : (
-                    <p className="text-sm text-muted-foreground">Nenhum parceiro vinculado</p>
+                    <div className="flex flex-col gap-2">
+                        <p className="text-sm text-muted-foreground">Nenhum parceiro vinculado</p>
+                        <Button asChild variant="secondary" className="w-full">
+                            <Link href="/pairing">
+                                Vincular Parceiro
+                            </Link>
+                        </Button>
+                    </div>
                 )}
             </Card>
 

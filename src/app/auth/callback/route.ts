@@ -17,7 +17,12 @@ export async function GET(request: Request) {
 
         const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code);
 
-        if (!error && user) {
+        if (error) {
+            console.error('Auth error:', error);
+            return NextResponse.redirect(new URL(`/login?error=auth_code_error&message=${encodeURIComponent(error.message)}`, requestUrl.origin));
+        }
+
+        if (user) {
             // Verificar se usuário existe na tabela users
             const { data: existingUser } = await supabase
                 .from('users')
@@ -39,11 +44,10 @@ export async function GET(request: Request) {
                 });
 
                 if (insertError) {
-                    // Erro ao criar usuário, redirecionar para login com erro
-                    return NextResponse.redirect(new URL('/login?error=user_creation_failed', requestUrl.origin));
+                    console.error('Error creating user:', insertError);
+                    return NextResponse.redirect(new URL(`/login?error=user_creation_failed&message=${encodeURIComponent(insertError.message)}`, requestUrl.origin));
                 }
 
-                // Redirecionar para pareamento
                 return NextResponse.redirect(new URL('/pairing', requestUrl.origin));
             }
 
@@ -58,6 +62,8 @@ export async function GET(request: Request) {
                 return NextResponse.redirect(new URL('/pairing', requestUrl.origin));
             }
         }
+    } else {
+        return NextResponse.redirect(new URL('/login?error=no_code', requestUrl.origin));
     }
 
     return NextResponse.redirect(new URL('/', requestUrl.origin));

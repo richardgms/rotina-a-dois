@@ -32,7 +32,7 @@ export default function DashboardPage() {
     const isToday = checkIsToday(selectedDate);
 
     // Dados e Ações
-    const { isLoading: dashboardLoading, dailyStatus, error, timedOut, refetch } = useDashboardData({ user, selectedDate });
+    const { isLoading: dashboardLoading, dailyStatus, error, timedOut, refetch } = useDashboardData({ user, selectedDate, authLoading });
     const { routinesForDay } = useRoutines();
     const { todayTasks, progress, nextTask, setTaskStatus } = useTaskLogs();
     const { saveDailyStatus, activateDifficultDay } = useDailyStatus();

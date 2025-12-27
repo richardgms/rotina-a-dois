@@ -9,11 +9,12 @@ import { checkIsToday } from '@/lib/utils';
 interface UseDashboardDataProps {
     user: User | null;
     selectedDate: Date;
+    authLoading?: boolean; // Para saber se auth ainda está carregando
 }
 
-const LOADING_TIMEOUT_MS = 10000; // 10 segundos
+const DATA_LOADING_TIMEOUT_MS = 15000; // 15 segundos para carregar dados APÓS auth
 
-export function useDashboardData({ user, selectedDate }: UseDashboardDataProps) {
+export function useDashboardData({ user, selectedDate, authLoading = false }: UseDashboardDataProps) {
     const supabase = getSupabaseClient();
     const { initializeDayTasks } = useTaskLogs();
     const hasFetchedRef = useRef(false);
@@ -21,6 +22,7 @@ export function useDashboardData({ user, selectedDate }: UseDashboardDataProps) 
     const [isLoadingLocal, setIsLoadingLocal] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [timedOut, setTimedOut] = useState(false);
+    const [dataFetchStarted, setDataFetchStarted] = useState(false);
     const isToday = checkIsToday(selectedDate);
 
     // Resetar fetch quando a data mudar
@@ -31,31 +33,52 @@ export function useDashboardData({ user, selectedDate }: UseDashboardDataProps) 
             lastFetchDateRef.current = dateStr;
             setError(null);
             setTimedOut(false);
+            setDataFetchStarted(false);
         }
     }, [selectedDate]);
 
-    // Timeout de segurança: se loading demorar mais de 10s, forçar fim
+    // Timeout de segurança: só começa APÓS auth terminar e data fetch iniciar
     useEffect(() => {
-        if (!isLoadingLocal) return;
+        // Só inicia timeout se:
+        // 1. Auth terminou (authLoading = false)
+        // 2. Data fetch iniciou (dataFetchStarted = true)
+        // 3. Ainda está em loading
+        if (authLoading || !dataFetchStarted || !isLoadingLocal) return;
+
+        console.log('[useDashboardData] Iniciando timeout de', DATA_LOADING_TIMEOUT_MS / 1000, 'segundos');
 
         const timeout = setTimeout(() => {
             if (isLoadingLocal) {
-                console.error('[useDashboardData] TIMEOUT: Loading demorou mais de 10 segundos');
+                console.error('[useDashboardData] TIMEOUT: Carregamento de dados demorou demais');
                 setIsLoadingLocal(false);
                 setTimedOut(true);
-                setError('Timeout ao carregar dados. Por favor, recarregue a página.');
+                setError('Timeout ao carregar dados. Por favor, tente novamente.');
                 useRoutineStore.getState().setLoading(false);
             }
-        }, LOADING_TIMEOUT_MS);
+        }, DATA_LOADING_TIMEOUT_MS);
 
         return () => clearTimeout(timeout);
-    }, [isLoadingLocal]);
+    }, [authLoading, dataFetchStarted, isLoadingLocal]);
+
+    // Se auth terminou sem user, parar loading
+    useEffect(() => {
+        if (!authLoading && !user) {
+            console.log('[useDashboardData] Auth terminou sem usuário, parando loading');
+            setIsLoadingLocal(false);
+        }
+    }, [authLoading, user]);
 
     const loadDashboardData = useCallback(async () => {
-        // Se não tem usuário, não tenta carregar mas também não fica loading infinito
+        // Se auth ainda carregando, aguardar
+        if (authLoading) {
+            console.log('[useDashboardData] Aguardando auth terminar...');
+            return;
+        }
+
+        // Se não tem usuário após auth, não carregar
         if (!user) {
-            console.log('[useDashboardData] Sem usuário, aguardando autenticação...');
-            // Não setar isLoadingLocal = false aqui, deixar o timeout cuidar
+            console.log('[useDashboardData] Sem usuário após auth, não há dados para carregar');
+            setIsLoadingLocal(false);
             return;
         }
 
@@ -64,10 +87,11 @@ export function useDashboardData({ user, selectedDate }: UseDashboardDataProps) 
 
         hasFetchedRef.current = true;
         setIsLoadingLocal(true);
+        setDataFetchStarted(true);
         setError(null);
 
         try {
-            console.log('[useDashboardData] Iniciando carregamento de dados...');
+            console.log('[useDashboardData] Iniciando carregamento de dados para user:', user.id);
             const todayStr = format(selectedDate, 'yyyy-MM-dd');
             const dayOfWeek = selectedDate.getDay();
 
@@ -94,11 +118,13 @@ export function useDashboardData({ user, selectedDate }: UseDashboardDataProps) 
 
             if (routinesResult.error) {
                 console.error('[useDashboardData] Erro routines:', routinesResult.error);
-                setError('Erro ao carregar rotinas');
+                setError('Erro ao carregar rotinas: ' + routinesResult.error.message);
+                return;
             }
             if (taskLogsResult.error) {
                 console.error('[useDashboardData] Erro taskLogs:', taskLogsResult.error);
-                setError('Erro ao carregar tarefas');
+                setError('Erro ao carregar tarefas: ' + taskLogsResult.error.message);
+                return;
             }
             if (statusResult.error) {
                 console.error('[useDashboardData] Erro status:', statusResult.error);
@@ -106,6 +132,8 @@ export function useDashboardData({ user, selectedDate }: UseDashboardDataProps) 
 
             const routines = (routinesResult.data || []) as Routine[];
             const tasks = (taskLogsResult.data || []) as TaskLog[];
+
+            console.log('[useDashboardData] Dados recebidos:', { routines: routines.length, tasks: tasks.length });
 
             // Atualizar Stores
             useRoutineStore.getState().setRoutines(routines as Routine[]);
@@ -121,20 +149,20 @@ export function useDashboardData({ user, selectedDate }: UseDashboardDataProps) 
 
         } catch (err) {
             console.error('[useDashboardData] ERRO nos fetches:', err);
-            setError('Erro ao carregar dados do dashboard');
+            setError('Erro ao carregar dados: ' + (err instanceof Error ? err.message : 'Erro desconhecido'));
             hasFetchedRef.current = false;
         } finally {
             setIsLoadingLocal(false);
             useRoutineStore.getState().setLoading(false);
         }
-    }, [user, selectedDate, supabase, initializeDayTasks, isToday]);
+    }, [user, authLoading, selectedDate, supabase, initializeDayTasks, isToday]);
 
     useEffect(() => {
         loadDashboardData();
     }, [loadDashboardData]);
 
     return {
-        isLoading: isLoadingLocal,
+        isLoading: isLoadingLocal || authLoading, // Loading se auth OU data estiver carregando
         error,
         timedOut,
         dailyStatus: useRoutineStore((state) => state.dailyStatus),
@@ -142,6 +170,8 @@ export function useDashboardData({ user, selectedDate }: UseDashboardDataProps) 
             hasFetchedRef.current = false;
             setError(null);
             setTimedOut(false);
+            setDataFetchStarted(false);
+            setIsLoadingLocal(true);
             await loadDashboardData();
         }
     };
